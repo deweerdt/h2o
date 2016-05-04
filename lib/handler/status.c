@@ -65,8 +65,10 @@ static int collect_req_status(h2o_req_t *req, void *_cbdata)
     assert(len != 0);
     --len; /* omit trailing LF */
     h2o_buffer_reserve(&cbdata->buffer, len + 4);
-    memcpy(cbdata->buffer->bytes + cbdata->buffer->size, ",\n  ", 4);
-    cbdata->buffer->size += 4;
+    if (cbdata->buffer->size > 0) {
+        memcpy(cbdata->buffer->bytes + cbdata->buffer->size, ",\n  ", 4);
+        cbdata->buffer->size += 4;
+    }
     memcpy(cbdata->buffer->bytes + cbdata->buffer->size, logline, len);
     cbdata->buffer->size += len;
 
@@ -86,12 +88,19 @@ static void collect_reqs_of_context(struct st_h2o_status_collector_t *collector,
     ctx->globalconf->http2.callbacks.foreach_request(ctx, collect_req_status, &cbdata);
 
     pthread_mutex_lock(&collector->mutex);
-    if (cbdata.buffer->size != 0) {
-        collector->data.base = h2o_mem_realloc(collector->data.base, collector->data.len + cbdata.buffer->size);
-        memcpy(collector->data.base + collector->data.len, cbdata.buffer->bytes, cbdata.buffer->size);
-        collector->data.len += cbdata.buffer->size;
-    }
     was_last_thread = --collector->num_remaining_threads == 0;
+    if (cbdata.buffer->size != 0) {
+            size_t sz = collector->data.len + cbdata.buffer->size;   
+            if (!was_last_thread)
+                    sz++;
+            collector->data.base = h2o_mem_realloc(collector->data.base, sz);
+            memcpy(collector->data.base + collector->data.len, cbdata.buffer->bytes, cbdata.buffer->size);
+            collector->data.len += cbdata.buffer->size;
+            if (!was_last_thread) {
+                    memcpy(collector->data.base + collector->data.len, ",", 1);
+                    collector->data.len += 1;
+            }
+    }
     pthread_mutex_unlock(&collector->mutex);
 
     h2o_buffer_dispose(&cbdata.buffer);
