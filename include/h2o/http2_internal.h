@@ -25,6 +25,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include "khash.h"
+#include "h2o/cache.h"
 #include "h2o/http2_casper.h"
 #include "h2o/http2_scheduler.h"
 
@@ -47,7 +48,7 @@ typedef struct st_h2o_http2_stream_t h2o_http2_stream_t;
 #define H2O_HTTP2_ERROR_COMPRESSION -9
 #define H2O_HTTP2_ERROR_CONNECT -10
 #define H2O_HTTP2_ERROR_ENHANCE_YOUR_CALM -11
-#define H2O_HTTP2_ERROR_INADEUATE_SECURITY -12
+#define H2O_HTTP2_ERROR_INADEQUATE_SECURITY -12
 #define H2O_HTTP2_ERROR_INCOMPLETE -255 /* an internal value indicating that all data is not ready */
 #define H2O_HTTP2_ERROR_PROTOCOL_CLOSE_IMMEDIATELY -256
 
@@ -239,6 +240,7 @@ struct st_h2o_http2_conn_t {
         h2o_timeout_entry_t timeout_entry;
         h2o_http2_window_t window;
     } _write;
+    h2o_cache_t *push_memo;
     h2o_http2_casper_t *casper;
 };
 

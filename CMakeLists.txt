@@ -197,6 +197,7 @@ SET(LIB_SOURCE_FILES
     deps/libyrmcds/text_mode.c
     deps/picohttpparser/picohttpparser.c
 
+    lib/common/cache.c
     lib/common/file.c
     lib/common/filecache.c
     lib/common/hostinfo.c
@@ -238,6 +239,8 @@ SET(LIB_SOURCE_FILES
     lib/handler/redirect.c
     lib/handler/reproxy.c
     lib/handler/status.c
+    lib/handler/status/errors.c
+    lib/handler/status/requests.c
     lib/handler/configurator/access_log.c
     lib/handler/configurator/compress.c
     lib/handler/configurator/errordoc.c
@@ -267,6 +270,7 @@ SET(UNIT_TEST_SOURCE_FILES
     ${BROTLI_SOURCE_FILES}
     deps/picotest/picotest.c
     t/00unit/test.c
+    t/00unit/lib/common/cache.c
     t/00unit/lib/common/hostinfo.c
     t/00unit/lib/common/multithread.c
     t/00unit/lib/common/serverutil.c
@@ -289,6 +293,7 @@ SET(UNIT_TEST_SOURCE_FILES
     t/00unit/src/ssl.c
     t/00unit/issues/293.c)
 LIST(REMOVE_ITEM UNIT_TEST_SOURCE_FILES
+    lib/common/cache.c
     lib/common/hostinfo.c
     lib/common/multithread.c
     lib/common/serverutil.c
@@ -432,6 +437,7 @@ IF (NOT WITHOUT_LIBS)
 ENDIF ()
 
 INSTALL(PROGRAMS share/h2o/annotate-backtrace-symbols share/h2o/fastcgi-cgi share/h2o/fetch-ocsp-response share/h2o/kill-on-close share/h2o/setuidgid share/h2o/start_server DESTINATION share/h2o)
+INSTALL(FILES share/h2o/ca-bundle.crt DESTINATION share/h2o)
 INSTALL(FILES share/h2o/status/index.html DESTINATION share/h2o/status)
 INSTALL(DIRECTORY doc/ DESTINATION share/doc/h2o PATTERN "Makefile" EXCLUDE PATTERN "README.md" EXCLUDE)
 INSTALL(DIRECTORY examples/ DESTINATION share/doc/h2o/examples)

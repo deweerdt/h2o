@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 DeNA Co., Ltd.
+ * Copyright (c) 2014-2016 DeNA Co., Ltd., Kazuho Oku, Fastly, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -60,7 +60,7 @@ static void close_connection(h2o_http2_conn_t *conn);
 static void send_stream_error(h2o_http2_conn_t *conn, uint32_t stream_id, int errnum);
 static ssize_t expect_default(h2o_http2_conn_t *conn, const uint8_t *src, size_t len, const char **err_desc);
 static int do_emit_writereq(h2o_http2_conn_t *conn);
-static void on_read(h2o_socket_t *sock, int status);
+static void on_read(h2o_socket_t *sock, const char *err);
 static void push_path(h2o_req_t *src_req, const char *abspath, size_t abspath_len);
 static int foreach_request(h2o_context_t *ctx, int (*cb)(h2o_req_t *req, void *cbdata), void *cbdata);
 
@@ -254,6 +254,8 @@ static void close_connection_now(h2o_http2_conn_t *conn)
     assert(!h2o_timeout_is_linked(&conn->_write.timeout_entry));
     if (conn->_headers_unparsed != NULL)
         h2o_buffer_dispose(&conn->_headers_unparsed);
+    if (conn->push_memo != NULL)
+        h2o_cache_destroy(conn->push_memo);
     if (conn->casper != NULL)
         h2o_http2_casper_destroy(conn->casper);
     h2o_linklist_unlink(&conn->_conns);
@@ -278,6 +280,8 @@ void send_stream_error(h2o_http2_conn_t *conn, uint32_t stream_id, int errnum)
 {
     assert(stream_id != 0);
     assert(conn->state < H2O_HTTP2_CONN_STATE_IS_CLOSING);
+
+    h2o_context_report_emitted_error(conn->super.ctx, errnum, 2);
 
     h2o_http2_encode_rst_stream_frame(&conn->_write.buf, stream_id, -errnum);
     h2o_http2_conn_request_write(conn);
@@ -852,11 +856,12 @@ EarlyExit:
         h2o_socket_read_stop(conn->sock);
 }
 
-static void on_read(h2o_socket_t *sock, int status)
+static void on_read(h2o_socket_t *sock, const char *err)
 {
     h2o_http2_conn_t *conn = sock->data;
 
-    if (status != 0) {
+    if (err != NULL) {
+        h2o_context_report_emitted_error(conn->super.ctx, 0, 2);
         h2o_socket_read_stop(conn->sock);
         close_connection(conn);
         return;
@@ -919,14 +924,15 @@ void h2o_http2_conn_register_for_proceed_callback(h2o_http2_conn_t *conn, h2o_ht
     }
 }
 
-static void on_write_complete(h2o_socket_t *sock, int status)
+static void on_write_complete(h2o_socket_t *sock, const char *err)
 {
     h2o_http2_conn_t *conn = sock->data;
 
     assert(conn->_write.buf_in_flight != NULL);
 
     /* close by error if necessary */
-    if (status != 0) {
+    if (err != NULL) {
+        h2o_context_report_emitted_error(conn->super.ctx, 0, 2);
         close_connection_now(conn);
         return;
     }
@@ -936,7 +942,7 @@ static void on_write_complete(h2o_socket_t *sock, int status)
     assert(conn->_write.buf_in_flight == NULL);
 
     /* call the proceed callback of the streams that have been flushed (while unlinking them from the list) */
-    if (status == 0 && conn->state < H2O_HTTP2_CONN_STATE_IS_CLOSING) {
+    if (err == NULL && conn->state < H2O_HTTP2_CONN_STATE_IS_CLOSING) {
         while (!h2o_linklist_is_empty(&conn->_write.streams_to_proceed)) {
             h2o_http2_stream_t *stream =
                 H2O_STRUCT_FROM_MEMBER(h2o_http2_stream_t, _refs.link, conn->_write.streams_to_proceed.next);
@@ -1033,6 +1039,12 @@ static socklen_t get_peername(h2o_conn_t *_conn, struct sockaddr *sa)
 {
     h2o_http2_conn_t *conn = (void *)_conn;
     return h2o_socket_getpeername(conn->sock, sa);
+}
+
+static h2o_socket_t *get_socket(h2o_conn_t *_conn)
+{
+    h2o_http2_conn_t *conn = (void *)_conn;
+    return conn->sock;
 }
 
 #define DEFINE_TLS_LOGGER(name)                                                                                                    \
@@ -1132,6 +1144,7 @@ static h2o_http2_conn_t *create_conn(h2o_context_t *ctx, h2o_hostconf_t **hosts,
         get_sockname, /* stringify address */
         get_peername, /* ditto */
         push_path,    /* HTTP2 push */
+        get_socket, /* get underlying socket */
         {{
             {log_protocol_version, log_session_reused, log_cipher, log_cipher_bits}, /* ssl */
             {}, /* http1 */
@@ -1163,20 +1176,37 @@ static h2o_http2_conn_t *create_conn(h2o_context_t *ctx, h2o_hostconf_t **hosts,
     return conn;
 }
 
+static int update_push_memo(h2o_http2_conn_t *conn, h2o_req_t *src_req, const char *abspath, size_t abspath_len)
+{
+
+    if (conn->push_memo == NULL)
+        conn->push_memo = h2o_cache_create(0, 1024, 1, NULL);
+
+    /* uses the hash as the key */
+    h2o_cache_hashcode_t url_hash = h2o_cache_calchash(src_req->input.scheme->name.base, src_req->input.scheme->name.len) ^
+        h2o_cache_calchash(src_req->input.authority.base, src_req->input.authority.len) ^ h2o_cache_calchash(abspath, abspath_len);
+    return h2o_cache_set(conn->push_memo, 0, h2o_iovec_init(&url_hash, sizeof(url_hash)), url_hash, h2o_iovec_init(NULL, 0));
+}
+
 static void push_path(h2o_req_t *src_req, const char *abspath, size_t abspath_len)
 {
     h2o_http2_conn_t *conn = (void *)src_req->conn;
     h2o_http2_stream_t *src_stream = H2O_STRUCT_FROM_MEMBER(h2o_http2_stream_t, req, src_req);
 
+    /* RFC 7540 8.2.1: PUSH_PROMISE frames can be sent by the server in response to any client-initiated stream */
+    if (h2o_http2_stream_is_push(src_stream->stream_id))
+        return;
+
     if (!conn->peer_settings.enable_push || conn->num_streams.push.open >= conn->peer_settings.max_concurrent_streams)
         return;
+
     if (conn->push_stream_ids.max_open >= 0x7ffffff0)
         return;
     if (!(h2o_linklist_is_empty(&conn->_pending_reqs) && can_run_requests(conn)))
         return;
 
     /* casper-related code */
-    if (src_stream->req.hostconf->http2.casper.capacity_bits != 0 && !h2o_http2_stream_is_push(src_stream->stream_id)) {
+    if (src_stream->req.hostconf->http2.casper.capacity_bits != 0) {
         size_t header_index;
         switch (src_stream->pull.casper_state) {
         case H2O_HTTP2_STREAM_CASPER_STATE_TBD:
@@ -1201,6 +1231,10 @@ static void push_path(h2o_req_t *src_req, const char *abspath, size_t abspath_le
             return;
         }
     }
+
+    /* update the push memo, and if it already pushed on the same connection, return */
+    if (update_push_memo(conn, src_req, abspath, abspath_len))
+        return;
 
     /* open the stream */
     conn->push_stream_ids.max_open += 2;
