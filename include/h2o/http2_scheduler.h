@@ -63,6 +63,7 @@ typedef struct st_h2o_http2_scheduler_openref_t {
  * @return non-zero value to stop traversing through the tree, or 0 to continue
  */
 typedef int (*h2o_http2_scheduler_run_cb)(h2o_http2_scheduler_openref_t *ref, int *still_is_active, void *cb_arg);
+typedef int (*h2o_http2_scheduler_dump_cb)(h2o_http2_scheduler_openref_t *ref, void *cb_arg);
 
 /**
  *
@@ -109,6 +110,7 @@ void h2o_http2_scheduler_activate(h2o_http2_scheduler_openref_t *ref);
  * weight.
  */
 int h2o_http2_scheduler_run(h2o_http2_scheduler_node_t *root, h2o_http2_scheduler_run_cb cb, void *cb_arg);
+int h2o_http2_scheduler_dump(h2o_http2_scheduler_node_t *root, h2o_http2_scheduler_dump_cb cb, void *cb_arg);
 /**
  * returns if there are any active entries nodes in the scheduler (may have false positives, but no false negatives)
  */

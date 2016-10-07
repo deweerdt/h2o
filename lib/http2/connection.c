@@ -977,6 +977,30 @@ static void on_write_complete(h2o_socket_t *sock, const char *err)
     do_emit_writereq(conn);
 }
 
+struct dump_one_ref_arg {
+    h2o_http2_conn_t *conn;
+    int first;
+    uint32_t first_sid;
+};
+static int dump_one_ref(h2o_http2_scheduler_openref_t *ref, void *cb_arg)
+{
+    struct dump_one_ref_arg *dora = cb_arg;
+    int ret = 0;
+    h2o_http2_stream_t *stream = H2O_STRUCT_FROM_MEMBER(h2o_http2_stream_t, _refs.scheduler, ref);
+    if (dora->first) {
+        dora->first = 0;
+        dora->first_sid = stream->stream_id;
+        fprintf(stderr, "%p: ", dora->conn);
+    } else {
+        if (dora->first_sid == stream->stream_id) {
+            ret = 1;
+        }
+        fprintf(stderr, ", ");
+    }
+    fprintf(stderr, "%" PRIu32, stream->stream_id);
+    return ret;
+}
+
 static int emit_writereq_of_openref(h2o_http2_scheduler_openref_t *ref, int *still_is_active, void *cb_arg)
 {
     h2o_http2_conn_t *conn = cb_arg;
@@ -1005,8 +1029,12 @@ void do_emit_writereq(h2o_http2_conn_t *conn)
     assert(conn->_write.buf_in_flight == NULL);
 
     /* push DATA frames */
-    if (conn->state < H2O_HTTP2_CONN_STATE_IS_CLOSING && h2o_http2_conn_get_buffer_window(conn) > 0)
+    if (conn->state < H2O_HTTP2_CONN_STATE_IS_CLOSING && h2o_http2_conn_get_buffer_window(conn) > 0) {
+        struct dump_one_ref_arg dora = {conn, 1};
+        h2o_http2_scheduler_dump(&conn->scheduler, dump_one_ref, &dora);
+        fprintf(stderr, "\n");
         h2o_http2_scheduler_run(&conn->scheduler, emit_writereq_of_openref, conn);
+    }
 
     if (conn->_write.buf->size != 0) {
         /* write and wait for completion */

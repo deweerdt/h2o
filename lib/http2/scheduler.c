@@ -346,6 +346,50 @@ Redo:
     return bail_out;
 }
 
+static int dump(h2o_http2_scheduler_node_t *node, h2o_http2_scheduler_dump_cb cb, void *cb_arg)
+{
+Redo:
+    if (node->_queue == NULL)
+        return 0;
+
+    h2o_http2_scheduler_queue_node_t *drr_node = queue_pop(node->_queue);
+    if (drr_node == NULL)
+        return 0;
+
+    h2o_http2_scheduler_openref_t *ref = H2O_STRUCT_FROM_MEMBER(h2o_http2_scheduler_openref_t, _queue_node, drr_node);
+
+    if (!ref->_self_is_active) {
+        int bail_out;
+        bail_out = cb(ref, cb_arg);
+        /* run the children (manually-unrolled tail recursion) */
+        queue_set(node->_queue, &ref->_queue_node, ref->weight);
+        if (bail_out) {
+            return 1;
+        }
+        node = &ref->node;
+        goto Redo;
+    }
+    assert(ref->_active_cnt != 0);
+
+    /* call the callbacks */
+    int bail_out = cb(ref, cb_arg);
+
+    queue_set(node->_queue, &ref->_queue_node, ref->weight);
+    return bail_out;
+}
+
+int h2o_http2_scheduler_dump(h2o_http2_scheduler_node_t *root, h2o_http2_scheduler_dump_cb cb, void *cb_arg)
+{
+    if (root->_queue != NULL) {
+        while (!queue_is_empty(root->_queue)) {
+            int bail_out = dump(root, cb, cb_arg);
+            if (bail_out)
+                return bail_out;
+        }
+    }
+    return 0;
+}
+
 int h2o_http2_scheduler_run(h2o_http2_scheduler_node_t *root, h2o_http2_scheduler_run_cb cb, void *cb_arg)
 {
     if (root->_queue != NULL) {
