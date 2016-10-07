@@ -54,6 +54,7 @@
 
 struct st_h2o_socket_ssl_t {
     SSL *ssl;
+    int is_server;
     int *did_write_in_read; /* used for detecting and closing the connection upon renegotiation (FIXME implement renegotiation) */
     size_t record_overhead;
     struct {
@@ -876,7 +877,7 @@ static void proceed_handshake(h2o_socket_t *sock, const char *err)
     }
 
 Redo:
-    if (SSL_is_server(sock->ssl->ssl)) {
+    if (sock->ssl->is_server) {
         ret = SSL_accept(sock->ssl->ssl);
     } else {
         ret = SSL_connect(sock->ssl->ssl);
@@ -972,6 +973,7 @@ void h2o_socket_ssl_handshake(h2o_socket_t *sock, SSL_CTX *ssl_ctx, const char *
     sock->ssl->handshake.cb = handshake_cb;
     if (server_name == NULL) {
         /* is server */
+        sock->ssl->is_server = 1;
         if (SSL_CTX_sess_get_get_cb(ssl_ctx) != NULL)
             sock->ssl->handshake.server.async_resumption.state = ASYNC_RESUMPTION_STATE_RECORD;
         if (sock->ssl->input.encrypted->size != 0)

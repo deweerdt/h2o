@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <pthread.h>
+#include <errno.h>
 #include <sys/stat.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
@@ -315,6 +316,50 @@ H2O_NORETURN static void *ticket_internal_updater(void *unused)
     }
 }
 
+#ifdef OPENSSL_IS_BORINGSSL
+/* Convert the various cipher NIDs and dummies to a proper OID NID */
+int EVP_CIPHER_type(const EVP_CIPHER * ctx)
+{
+	int nid;
+	const ASN1_OBJECT *otmp;
+	nid = EVP_CIPHER_nid(ctx);
+	switch (nid) {
+	case NID_rc2_cbc:
+	case NID_rc2_64_cbc:
+	case NID_rc2_40_cbc:
+		return NID_rc2_cbc;
+	case NID_rc4:
+	case NID_rc4_40:
+		return NID_rc4;
+	case NID_aes_128_cfb128:
+	case NID_aes_128_cfb8:
+	case NID_aes_128_cfb1:
+		return NID_aes_128_cfb128;
+	case NID_aes_192_cfb128:
+	case NID_aes_192_cfb8:
+	case NID_aes_192_cfb1:
+		return NID_aes_192_cfb128;
+	case NID_aes_256_cfb128:
+	case NID_aes_256_cfb8:
+	case NID_aes_256_cfb1:
+		return NID_aes_256_cfb128;
+	case NID_des_cfb64:
+	case NID_des_cfb8:
+	case NID_des_cfb1:
+		return NID_des_cfb64;
+	case NID_des_ede3_cfb64:
+	case NID_des_ede3_cfb8:
+	case NID_des_ede3_cfb1:
+		return NID_des_cfb64;
+	default:		/* Check it has an OID and it is valid */
+		otmp = OBJ_nid2obj(nid);
+		if (!otmp || !otmp->data)
+			nid = NID_undef;
+		ASN1_OBJECT_free((ASN1_OBJECT *)otmp);
+		return nid;
+	}
+}
+#endif
 static int serialize_ticket_entry(char *buf, size_t bufsz, struct st_session_ticket_t *ticket)
 {
     char *name_buf = alloca(sizeof(ticket->name) * 2 + 1);

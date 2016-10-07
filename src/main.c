@@ -1128,7 +1128,9 @@ static int on_config_num_ocsp_updaters(h2o_configurator_command_t *cmd, h2o_conf
         h2o_configurator_errprintf(cmd, node, "num-ocsp-updaters must be >=1");
         return -1;
     }
+#ifndef OPENSSL_NO_OCSP
     h2o_sem_set_capacity(&ocsp_updater_semaphore, n);
+#endif
     return 0;
 }
 
@@ -1773,7 +1775,9 @@ int main(int argc, char **argv)
 
     h2o_hostinfo_max_threads = H2O_DEFAULT_NUM_NAME_RESOLUTION_THREADS;
 
+#ifndef OPENSSL_NO_OCSP
     h2o_sem_init(&ocsp_updater_semaphore, H2O_DEFAULT_OCSP_UPDATER_MAX_THREADS);
+#endif
 
     init_openssl();
     setup_configurators();

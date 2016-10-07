@@ -433,9 +433,13 @@ static int priv_encdec_proxy(const char *cmd, int flen, const unsigned char *fro
     return (int)ret;
 }
 
-static int priv_encdec_stub(const char *name,
-                            int (*func)(int flen, const unsigned char *from, unsigned char *to, RSA *rsa, int padding),
-                            struct expbuf_t *buf)
+#ifndef OPENSSL_IS_BORINGSSL
+typedef int (*encdec_sub_func)(int flen, const unsigned char *from, unsigned char *to, RSA *rsa, int padding);
+#else
+typedef int (*encdec_sub_func)(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa, int padding);
+#endif
+
+static int priv_encdec_stub(const char *name, encdec_sub_func func, struct expbuf_t *buf)
 {
     unsigned char *from, to[4096];
     size_t flen;
@@ -462,21 +466,40 @@ static int priv_encdec_stub(const char *name,
 
     return 0;
 }
+#if !defined(OPENSSL_IS_BORINGSSL)
 
 static int priv_enc_proxy(int flen, const unsigned char *from, unsigned char *to, RSA *rsa, int padding)
 {
     return priv_encdec_proxy("priv_enc", flen, from, to, rsa, padding);
 }
 
+#else
+
+static int priv_enc_proxy(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out, const uint8_t *in, size_t in_len, int padding)
+{
+    int ret;
+    ret = priv_encdec_proxy("priv_enc", in_len, in, out, rsa, padding);
+    *out_len = ret;
+    return ret;
+}
+#endif
+
 static int priv_enc_stub(struct expbuf_t *buf)
 {
     return priv_encdec_stub(__FUNCTION__, RSA_private_encrypt, buf);
 }
 
+#if !defined(OPENSSL_IS_BORINGSSL)
 static int priv_dec_proxy(int flen, const unsigned char *from, unsigned char *to, RSA *rsa, int padding)
 {
     return priv_encdec_proxy("priv_dec", flen, from, to, rsa, padding);
 }
+#else
+static int priv_dec_proxy(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out, const uint8_t *in, size_t in_len, int padding)
+{
+    return priv_encdec_proxy("priv_dec", in_len, in, out, rsa, padding);
+}
+#endif
 
 static int priv_dec_stub(struct expbuf_t *buf)
 {
@@ -543,7 +566,7 @@ static int sign_stub(struct expbuf_t *buf)
     return 0;
 }
 
-#if !OPENSSL_1_1_API
+#if !OPENSSL_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
 
 static void RSA_get0_key(const RSA *rsa, const BIGNUM **n, const BIGNUM **e, const BIGNUM **d)
 {
@@ -560,6 +583,9 @@ static void RSA_get0_key(const RSA *rsa, const BIGNUM **n, const BIGNUM **e, con
     }
 }
 
+#endif
+
+#if !OPENSSL_1_1_API || defined(OPENSSL_IS_BORINGSSL)
 static int RSA_set0_key(RSA *rsa, BIGNUM *n, BIGNUM *e, BIGNUM *d)
 {
     if (n == NULL || e == NULL) {
@@ -580,6 +606,7 @@ static void RSA_set_flags(RSA *r, int flags)
 {
     r->flags |= flags;
 }
+
 #endif
 
 static EVP_PKEY *create_pkey(neverbleed_t *nb, size_t key_index, const char *ebuf, const char *nbuf)
@@ -725,6 +752,74 @@ static int ecdsa_sign_proxy(int type, const unsigned char *m, int m_len, unsigne
     return (int)ret;
 }
 
+#ifdef OPENSSL_IS_BORINGSSL
+
+EC_POINT *EC_POINT_bn2point(const EC_GROUP *group,
+        const BIGNUM *bn, EC_POINT *point, BN_CTX *ctx)
+{
+    size_t buf_len = 0;
+    unsigned char *buf;
+    EC_POINT *ret;
+
+    if ((buf_len = BN_num_bytes(bn)) == 0)
+        return NULL;
+    buf = OPENSSL_malloc(buf_len);
+    if (buf == NULL)
+        return NULL;
+
+    if (!BN_bn2bin(bn, buf)) {
+        OPENSSL_free(buf);
+        return NULL;
+    }
+
+    if (point == NULL) {
+        if ((ret = EC_POINT_new(group)) == NULL) {
+            OPENSSL_free(buf);
+            return NULL;
+        }
+    } else
+        ret = point;
+
+    if (!EC_POINT_oct2point(group, ret, buf, buf_len, ctx)) {
+        if (point == NULL)
+            EC_POINT_clear_free(ret);
+        OPENSSL_free(buf);
+        return NULL;
+    }
+
+    OPENSSL_free(buf);
+    return ret;
+}
+
+BIGNUM *EC_POINT_point2bn(const EC_GROUP *group,
+        const EC_POINT *point,
+        point_conversion_form_t form,
+        BIGNUM *ret, BN_CTX *ctx)
+{
+    size_t buf_len = 0;
+    unsigned char *buf;
+
+    buf_len = EC_POINT_point2oct(group, point, form, NULL, 0, ctx);
+    if (buf_len == 0)
+        return NULL;
+
+    if ((buf = OPENSSL_malloc(buf_len)) == NULL)
+        return NULL;
+
+    if (!EC_POINT_point2oct(group, point, form, buf, buf_len, ctx)) {
+        OPENSSL_free(buf);
+        return NULL;
+    }
+
+    ret = BN_bin2bn(buf, buf_len, ret);
+
+    OPENSSL_free(buf);
+
+    return ret;
+}
+
+#endif
+
 static EVP_PKEY *ecdsa_create_pkey(neverbleed_t *nb, size_t key_index, int curve_name, const char *ec_pubkeybuf)
 {
     struct st_neverbleed_rsa_exdata_t *exdata;
@@ -846,6 +941,13 @@ int neverbleed_load_private_key_file(neverbleed_t *nb, SSL_CTX *ctx, const char 
     EVP_PKEY_free(pkey);
     return ret;
 }
+
+#ifdef OPENSSL_IS_BORINGSSL
+int EVP_PKEY_base_id(const EVP_PKEY *pkey)
+{
+        return EVP_PKEY_type(pkey->type);
+}
+#endif
 
 static int load_key_stub(struct expbuf_t *buf)
 {
@@ -1143,7 +1245,7 @@ __attribute__((noreturn)) static void daemon_main(int listen_fd, int close_notif
     }
 }
 
-#if !OPENSSL_1_1_API
+#if !OPENSSL_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
 
 static RSA_METHOD static_rsa_method = {
     "privsep RSA method", /* name */
@@ -1162,13 +1264,15 @@ static RSA_METHOD static_rsa_method = {
     NULL                  /* rsa_keygen */
 };
 
+#elif defined(OPENSSL_IS_BORINGSSL)
+static RSA_METHOD static_rsa_method;
 #endif
 
 int neverbleed_init(neverbleed_t *nb, char *errbuf)
 {
     int pipe_fds[2] = {-1, -1}, listen_fd = -1;
     char *tempdir = NULL;
-#if OPENSSL_1_1_API
+#if OPENSSL_1_1_API && (!defined(OPENSSL_IS_BORINGSSL))
     const RSA_METHOD *default_method = RSA_PKCS1_OpenSSL();
     EC_KEY_METHOD *ecdsa_method;
     const EC_KEY_METHOD *ecdsa_default_method;
@@ -1190,6 +1294,14 @@ int neverbleed_init(neverbleed_t *nb, char *errbuf)
     EC_KEY_METHOD_set_compute_key(ecdsa_method, NULL);
     /* it seems sign_sig and sign_setup is not used in TLS ECDSA. */
     EC_KEY_METHOD_set_sign(ecdsa_method, ecdsa_sign_proxy, NULL, NULL);
+#elif defined(OPENSSL_IS_BORINGSSL)
+    RSA *rsa = RSA_new();
+    RSA_METHOD *rsa_method = &static_rsa_method;
+    *rsa_method = *rsa->meth;
+    rsa_method->sign = sign_proxy;
+    rsa_method->encrypt = priv_enc_proxy;
+    rsa_method->decrypt = priv_dec_proxy;
+
 #else
     const RSA_METHOD *default_method = RSA_PKCS1_SSLeay();
     RSA_METHOD *rsa_method = &static_rsa_method;
@@ -1251,16 +1363,24 @@ int neverbleed_init(neverbleed_t *nb, char *errbuf)
     pipe_fds[0] = -1;
 
     /* setup engine */
-    if ((nb->engine = ENGINE_new()) == NULL || !ENGINE_set_id(nb->engine, "neverbleed") ||
-        !ENGINE_set_name(nb->engine, "privilege separation software engine") || !ENGINE_set_RSA(nb->engine, rsa_method)
-#if OPENSSL_1_1_API
-        || !ENGINE_set_EC(nb->engine, ecdsa_method)
+    if ((nb->engine = ENGINE_new()) == NULL
+#if !defined(OPENSSL_IS_BORINGSSL)
+            || !ENGINE_set_RSA(nb->engine, rsa_method)
+            || !ENGINE_set_id(nb->engine, "neverbleed")
+            || !ENGINE_set_name(nb->engine, "privilege separation software engine")
+#else
+            || !ENGINE_set_RSA_method(nb->engine, rsa_method, sizeof(*rsa_method))
+#endif
+#if OPENSSL_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
+            || !ENGINE_set_EC(nb->engine, ecdsa_method)
 #endif
             ) {
         snprintf(errbuf, NEVERBLEED_ERRBUF_SIZE, "failed to initialize the OpenSSL engine");
         goto Fail;
     }
+#if !defined(OPENSSL_IS_BORINGSSL)
     ENGINE_add(nb->engine);
+#endif
 
     /* setup thread key */
     pthread_key_create(&nb->thread_key, dispose_thread_data);
