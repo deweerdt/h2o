@@ -25,6 +25,7 @@ EOT
     my ($stderr, $stdout) = run_prog("$curl http://127.0.0.1:@{[$server->{port}]}/");
     like $stderr, qr{^HTTP/[^ ]+ 200\s}s;
     like $stderr, qr{^foo: ?FOO\r$}im;
+    $server->{close}();
 };
 
 subtest 'multi-hop' => sub {
@@ -46,6 +47,7 @@ EOT
     my ($stderr, $stdout) = run_prog("$curl http://127.0.0.1:@{[$server->{port}]}/");
     like $stderr, qr{^HTTP/[^ ]+ 200\s}s;
     like $stderr, qr{^foo: ?FOO\r$}im;
+    $server->{close}();
 };
 
 subtest 'with-alias' => sub {
@@ -75,6 +77,7 @@ EOT
         like $stderr, qr{^HTTP/[^ ]+ 200\s}s;
         like $stderr, qr{^foo: ?FOO\r$}im;
     };
+    $server->{close}();
 };
 
 subtest 'with-merge' => sub {
@@ -99,6 +102,7 @@ EOT
     like $stderr, qr{^HTTP/[^ ]+ 200\s}s;
     like $stderr, qr{^foo: ?FOO\r$}im;
     like $stderr, qr{^bar: ?BAR\r$}im;
+    $server->{close}();
 };
 
 done_testing();

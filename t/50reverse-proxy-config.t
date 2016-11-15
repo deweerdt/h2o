@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use Digest::MD5 qw(md5_hex);
-use Net::EmptyPort qw(check_port empty_port);
+use Net::EmptyPort qw(check_port);
 use Test::More;
 use t::Util;
 
@@ -15,7 +15,7 @@ plan skip_all => 'curl not found'
     unless prog_exists('curl');
 
 # start upstream
-my $upstream_port = empty_port();
+my $upstream_port = safe_empty_port();
 my $upstream = spawn_server(
     argv     => [
         qw(plackup -MPlack::App::File -s Starlet --access-log /dev/null -p), $upstream_port,
@@ -45,6 +45,7 @@ EOT
         warn qq{curl --silent --dump-header /dev/stdout "http://127.0.0.1:$server->{port}/?resp:status=302&resp:location=http://127.0.0.1:$upstream_port/foo"};
         $res = `curl --silent --dump-header /dev/stdout "http://127.0.0.1:$server->{port}/?resp:status=302&resp:location=http://127.0.0.1:$upstream_port/foo"`;
         like $res, qr{^location: http://127\.0\.0\.1:$server->{port}/foo}im, 'location :upstream_port';
+        $server->{close}();
     };
 
     subtest 'ON' => sub {
@@ -72,6 +73,7 @@ EOT
     like $resp, qr{^HTTP/1\.1 200 }s, "respond before timeout";
     $resp = $fetch->(3);
     like $resp, qr{^HTTP/1\.1 502 }s, "respond after timeout";
+    $server->{close}();
 };
 
 subtest 'infinite-internal-redirect' => sub {
@@ -85,6 +87,7 @@ reproxy: ON
 EOT
     my $resp = `curl --silent --dump-header /dev/stderr "http://127.0.0.1:$server->{port}/?resp:x-reproxy-url=http://127.0.0.1:$upstream_port/infinite-redirect" 2>&1 > /dev/null`;
     like $resp, qr{^HTTP/1\.1 502 }s;
+    $server->{close}();
 };
 
 subtest 'max-delegations' => sub {
@@ -99,6 +102,9 @@ max-delegations: 0
 EOT
     my $resp = `curl --silent --dump-header /dev/stderr "http://127.0.0.1:$server->{port}/?resp:x-reproxy-url=http://127.0.0.1:$upstream_port/index.txt" 2>&1 > /dev/null`;
     like $resp, qr{^HTTP/1\.1 502 }s;
+    $server->{close}();
 };
+
+safe_empty_port_release($upstream_port);
 
 done_testing;

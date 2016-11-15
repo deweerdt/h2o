@@ -27,6 +27,7 @@ EOT
         like $resp, qr{^content-type:\s*image/jpeg\r$}im; # type is inferred from the extension of the real file
         like $resp, qr{^content-length:\s*@{[(stat "@{[DOC_ROOT]}/halfdome.jpg")[7]]}\r$}im;
     });
+    $server->{close}();
 };
 
 subtest 'dynamic' => sub {
@@ -49,6 +50,7 @@ EOT
         my $resp = `$cmd --silent $proto://127.0.0.1:$port/robots.txt?name=Tobor`;
         is $resp, "Hello Tobor";
     });
+    $server->{close}();
 };
 
 done_testing;

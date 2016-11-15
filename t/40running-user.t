@@ -35,4 +35,5 @@ EOT
 
     my $resp = `curl --silent --dump-header /dev/stderr http://127.0.0.1:$server->{port}/ 2>&1 > /dev/null`;
     like $resp, qr{^HTTP/1}s;
+    $server->{close}();
 }

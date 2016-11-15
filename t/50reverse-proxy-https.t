@@ -1,13 +1,13 @@
 use strict;
 use warnings;
-use Net::EmptyPort qw(check_port empty_port);
+use Net::EmptyPort qw(check_port);
 use Test::More;
 use t::Util;
 
 plan skip_all => 'plackup not found'
     unless prog_exists('plackup');
 
-my $upstream_port = empty_port();
+my $upstream_port = safe_empty_port();
 my $upstream = spawn_server(
     argv => [
         qw(
@@ -42,6 +42,7 @@ EOT
         $resp = `$curl --silent --dump-header /dev/stderr --max-redirs 0 $proto://127.0.0.1:$port/wikipedia/ 2>&1 > /dev/null`;
         like $resp, qr{^HTTP/[^ ]* 200\s}is;
     });
+    $server->{close}();
 };
 
 subtest "reproxy" => sub {
@@ -65,6 +66,9 @@ EOT
         like $resp, qr{^HTTP/[^ ]* 200}im;
         like $resp, qr{^hello$}m;
     });
+    $server->{close}();
 };
+
+safe_empty_port_release($upstream_port);
 
 done_testing();

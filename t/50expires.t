@@ -16,7 +16,9 @@ hosts:
         file.dir: examples/doc_root
 $extra_conf
 EOT
-    return `curl --silent --dump-header /dev/stderr http://127.0.0.1:$server->{port}/ 2>&1 > /dev/null`;
+    my $ret = `curl --silent --dump-header /dev/stderr http://127.0.0.1:$server->{port}/ 2>&1 > /dev/null`;
+    $server->{close}();
+    return $ret;
 }
 
 

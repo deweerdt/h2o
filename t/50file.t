@@ -17,6 +17,7 @@ EOT
 
   my $resp = `curl --silent --dump-header /dev/stderr http://127.0.0.1:$server->{port}/index.txt/ 2>&1 > /dev/null`;
   like $resp, qr{^HTTP/1.1 404 File Not Found}s, "status";
+  $server->{close}();
 };
 
 done_testing;

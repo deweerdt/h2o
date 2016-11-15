@@ -69,6 +69,7 @@ EOT
 
     my $resp = do { local $/; <$blocked_conn> };
     like $resp, qr{^HTTP/1\.1 200 OK\r\n}s, "response is valid";
+    $server->{close}();
 }
 
 sub data_ready {

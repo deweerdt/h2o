@@ -34,6 +34,7 @@ EOT
         is read_file("$tempdir/h2o.pid"), "$server->{pid}\n", "pid unchanged";
     };
 
+    $server->{close}();
     undef $server;
 
     ok ! stat("$tempdir/h2o.pid"), "pid-file is unlinked";
@@ -55,6 +56,7 @@ EOT
     my ($port, $tls_port) = map { $server->{$_} } qw(port tls_port);
 
     sleep 1;
+    my $close_fn = $server->{close};
     undef $server; # should have performed a double-fork by now
 
     my $pid = read_file("$tempdir/h2o.pid");
@@ -73,6 +75,7 @@ EOT
     kill 'TERM', $pid;
     sleep 1;
     ok ! stat("$tempdir/h2o.pid"), "pid-file is unlinked";
+    $close_fn->();
 };
 
 done_testing;

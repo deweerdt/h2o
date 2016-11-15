@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Digest::MD5 qw(md5_hex);
 use File::Temp qw(tempdir);
-use Net::EmptyPort qw(check_port empty_port);
+use Net::EmptyPort qw(check_port);
 use Test::More;
 use t::Util;
 
@@ -50,5 +50,7 @@ subtest 'huge-headers' => sub {
         like $resp, qr{^set-cookie: ?}im;
     });
 };
+
+$server->{close}();
 
 done_testing();

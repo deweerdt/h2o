@@ -43,6 +43,7 @@ EOT
         like $headers, qr{^HTTP/1\.1 200 }s, "status";
         is $body, "hello dankogai\n", "content";
     };
+    $server->{close}();
 };
 
 done_testing();

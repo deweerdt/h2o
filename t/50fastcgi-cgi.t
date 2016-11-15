@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Digest::MD5 qw(md5_hex);
 use File::Temp qw(tempdir);
-use Net::EmptyPort qw(check_port empty_port);
+use Net::EmptyPort qw(check_port);
 use Test::More;
 use t::Util;
 
@@ -31,5 +31,7 @@ run_with_curl($server, sub {
     $resp = `$curl --silent -F name=world $proto://127.0.0.1:$port/hello.cgi`;
     is $resp, "Hello world", "POST";
 });
+
+$server->{close}();
 
 done_testing();

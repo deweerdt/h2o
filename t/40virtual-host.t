@@ -50,6 +50,8 @@ EOT
 
     $resp = `curl --silent --resolve alternate:$alternate_port:127.0.0.1 http://alternate:$alternate_port/`;
     is md5_hex($resp), md5_file("examples/doc_root.alternate/index.txt"), "'host: alternate' against alternate port";
+    safe_empty_port_release($global_port);
+    safe_empty_port_release($alternate_port);
 };
 
 subtest "wildcard" => sub {
@@ -78,6 +80,7 @@ EOT
     is $fetch->("xxx.example.com"), md5_file("examples/doc_root.alternate/index.txt"), "xxx.example.com";
     is $fetch->("example.com"), md5_file("examples/doc_root/index.html"), "example.com";
     is $fetch->("example.org"), md5_file("examples/doc_root/index.html"), "example.org";
+    $server->{close}();
 };
 
 done_testing();

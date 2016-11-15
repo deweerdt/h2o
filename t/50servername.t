@@ -19,6 +19,7 @@ EOT
     like $resp, qr{^HTTP/1\.1 200 }s, "200 response";
     like $resp, qr{^server: h2o/.*\r$}im, "h2o default Server: header found";
     is +(() = $resp =~ m{^server}img), 1, "header added only once";
+    $server->{close}();
 };
 
 subtest "alternate server header" => sub {
@@ -35,6 +36,7 @@ EOT
     like $resp, qr{^HTTP/1\.1 200 }s, "200 response";
     like $resp, qr{^server: h2oalternate\r$}im, "alternate h2o Server: header found";
     is +(() = $resp =~ m{^server}img), 1, "header added only once";
+    $server->{close}();
 };
 
 subtest "no server header" => sub {
@@ -50,6 +52,7 @@ EOT
     my $resp = `curl --silent --dump-header /dev/stderr http://127.0.0.1:$server->{port}/index.txt 2>&1 > /dev/null`;
     like $resp, qr{^HTTP/1\.1 200 }s, "200 response";
     unlike $resp, qr{^server}, "server unset";
+    $server->{close}();
 };
 
 done_testing();

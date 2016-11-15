@@ -22,4 +22,5 @@ like $resp, qr{^strict-transport-security: max-age=31536000; includeSubDomains; 
 is +(() = $resp =~ m{^strict-transport-security:}img), 1, "header added only once";
 unlike $resp, qr{^last-modified: }, "last-modified unset";
 
+$server->{close}();
 done_testing();

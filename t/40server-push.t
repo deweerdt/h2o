@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Net::EmptyPort qw(check_port empty_port);
+use Net::EmptyPort qw(check_port);
 use Test::More;
 use t::Util;
 
@@ -15,7 +15,7 @@ plan skip_all => 'mruby support is off'
 
 subtest "basic" => sub {
     # spawn upstream
-    my $upstream_port = empty_port();
+    my $upstream_port = safe_empty_port();
     my $upstream = spawn_server(
         argv     => [
             qw(plackup -s Starlet --access-log /dev/null -p), $upstream_port, ASSETS_DIR . "/upstream.psgi",
@@ -76,6 +76,8 @@ EOT
     subtest 'h2c' => sub {
         $doit->('https', '', $server->{tls_port});
     };
+    safe_empty_port_release($upstream_port);
+    $server->{close}();
 };
 
 subtest "push-twice" => sub {
@@ -103,6 +105,7 @@ EOT
     my $resp = `nghttp -v -m 2 -n --stat https://127.0.0.1:$server->{tls_port}/index.txt`;
     like $resp, qr{\s+200\s+16\s+/index\.js\n}is, "receives index.js";
     unlike $resp, qr{\s+200\s+16\s+/index\.js\n.*\s+200\s+16\s+/index\.js\n}is, "receives index.js only once";
+    $server->{close}();
 };
 
 
@@ -134,6 +137,7 @@ EOT
         });
         my $resp = `nghttp -n --stat https://127.0.0.1:$server->{tls_port}/reproxy`;
         like $resp, qr{\nid\s*responseEnd\s.*\s/index\.js\n.*\s/reproxy}is, "receives index.js then /reproxy";
+        $server->{close}();
     };
     subtest "authority-mismatch" => sub {
         my $server = spawn_h2o(sub {
@@ -164,6 +168,7 @@ EOT
         my $resp = `nghttp -n --stat https://127.0.0.1:$server->{tls_port}/reproxy`;
         like $resp, qr{\nid\s*responseEnd\s.*\s/index\.js\?2\n.*\s/reproxy}is, "receives index.js?2 then /reproxy";
         unlike $resp, qr{/index\.js\?1\n}is, "index.js?1 not received (authority mismatch)";
+        $server->{close}();
     };
 };
 
@@ -203,6 +208,7 @@ EOT
             my $resp = `nghttp -H'cookie: $casper' -v -n --stat https://127.0.0.1:$server->{tls_port}/index.txt`;
             unlike $resp, qr{\nid\s*responseEnd\s.*\s/index\.js\n}is, "does not receives index.js";
         }
+        $server->{close}();
     };
 };
 
@@ -240,6 +246,7 @@ EOT
     unlike $resp, qr{\nid\s*responseEnd\s.*\s/index\.js\n}is, "does not receive index.js";
     $resp = `nghttp -H'cache-digest: @{[$calc_digest->("/script.js", "/style.css")]}' -v -n --stat https://127.0.0.1:$server->{tls_port}/index.txt`;
     like $resp, qr{\nid\s*responseEnd\s.*\s/index\.js\n.*\s/index.txt}is, "receives index.js then /index.txt";
+    $server->{close}();
 };
 
 done_testing;

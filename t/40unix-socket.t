@@ -25,4 +25,6 @@ EOT
 my $resp = `(echo "GET / HTTP/1.0" ; echo) | nc -U $sock_path 2>&1`;
 like $resp, qr{^HTTP/1\.[0-9]+ 200 OK\r\n}s;
 
+$server->{close}();
+
 done_testing;

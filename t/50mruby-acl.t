@@ -10,7 +10,7 @@ plan skip_all => 'mruby support is off'
 
 subtest "invalid configuration 1" => sub {
     throws_ok sub {
-        spawn_h2o(<< 'EOT');
+        spawn_h2o(<< 'EOT')
 hosts:
   default:
     paths:
@@ -24,7 +24,7 @@ EOT
 
 subtest "invalid configuration 2" => sub {
     throws_ok sub {
-        spawn_h2o(<< 'EOT');
+        spawn_h2o(<< 'EOT')
 hosts:
   default:
     paths:
