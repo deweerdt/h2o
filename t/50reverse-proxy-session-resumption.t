@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use File::Temp qw(tempdir);
-use Net::EmptyPort qw(check_port empty_port);
+use Net::EmptyPort qw(check_port);
 use Test::Builder;
 use Test::More;
 use t::Util;
@@ -59,6 +59,8 @@ sub doit {
         my $reused = $log[$i] + 0;
         is($reused, $s->{expected}, $s->{desc});
     }
+    $server->{close}();
+    $upstream->{close}();
 };
 
 subtest 'default' => sub {
@@ -152,7 +154,7 @@ EOC
 subtest 'reproxy' => sub {
     my $upstream = create_upstream();
     my $upstream_port = $upstream->{tls_port};
-    my $app_port = empty_port();
+    my $app_port = safe_empty_port();
     my $app_server = spawn_server(
         argv => [
             qw(
@@ -180,6 +182,7 @@ EOC
         +{},
         +{ expected => 1 },
     ], +{ upstream => $upstream });
+    safe_empty_port_release($app_port);
 };
 
 subtest 'multiple-hosts' => sub {

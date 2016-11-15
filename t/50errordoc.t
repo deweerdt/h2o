@@ -32,6 +32,7 @@ EOT
         unlike $resp, qr{\r\nlast-modified:}is, "no last-modified";
         unlike $resp, qr{\r\etag:}is, "no etag";
     });
+    $server->{close}();
 };
 
 subtest 'double-error' => sub {
@@ -57,6 +58,7 @@ EOT
         unlike $resp, qr{\r\nlast-modified:}is, "no last-modified";
         unlike $resp, qr{\r\etag:}is, "no etag";
     });
+    $server->{close}();
 };
 
 subtest 'redirect' => sub {
@@ -88,6 +90,7 @@ EOT
         unlike $resp, qr{\r\nlast-modified:}is, "no last-modified";
         unlike $resp, qr{\r\etag:}is, "no etag";
     });
+    $server->{close}();
 };
 
 subtest 'multi-error' => sub {
@@ -109,6 +112,7 @@ EOT
         my $resp = `$curl --silent --dump-header /dev/stderr $proto://127.0.0.1:$port/nonexist 2>&1 > /dev/null`;
         like $resp, qr{^HTTP/[^ ]+ 404\s}s, "status";
     });
+    $server->{close}();
 };
 
 done_testing;

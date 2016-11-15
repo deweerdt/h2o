@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use Digest::MD5 qw(md5_hex);
-use Net::EmptyPort qw(check_port empty_port);
+use Net::EmptyPort qw(check_port);
 use Test::More;
 use t::Util;
 
@@ -13,7 +13,7 @@ plan skip_all => 'Starlet not found'
     unless system('perl -MStarlet /dev/null > /dev/null 2>&1') == 0;
 
 # start upstream
-my $upstream = empty_port();
+my $upstream = safe_empty_port();
 my $upstream_guard = spawn_server(
     argv     => [
         qw(plackup -s Starlet --keepalive-timeout 100 --access-log /dev/null --listen), "127.0.0.1:$upstream",
@@ -24,7 +24,7 @@ my $upstream_guard = spawn_server(
     },
 );
 
-my $error_upstream = empty_port();
+my $error_upstream = safe_empty_port();
 my $error_upstream_guard = spawn_server(
     argv     => [
         qw(plackup -s Starlet --keepalive-timeout 100 --access-log /dev/null --listen), "127.0.0.1:$error_upstream",
@@ -53,6 +53,7 @@ EOT
     ($headers, $body) = run_prog("curl --silent --dump-header /dev/stderr http://127.0.0.1:$server->{port}/notfound");
     like $headers, qr{^HTTP/1\.1 404 }is;
     is $body, "123";
+    $server->{close}();
 };
 
 subtest "internal-redirect-within-proxy" => sub {
@@ -74,6 +75,9 @@ EOT
     my ($headers, $body) = run_prog("curl --max-redirs 0 --silent --dump-header /dev/stderr http://127.0.0.1:$server->{port}/");
     like $headers, qr{^HTTP/1\.1 200 }is;
     is $body, "hello\n";
+    $server->{close}();
 };
 
+safe_empty_port_release($upstream);
+safe_empty_port_release($error_upstream);
 done_testing;

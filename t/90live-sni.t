@@ -46,6 +46,7 @@ EOT
         "alternate.127.0.0.1.xip.io:$server->{tls_port}",
         md5_file("examples/doc_root.alternate/index.txt"),
     );
+    $server->{close}();
 };
 
 subtest "wildcard" => sub {
@@ -78,6 +79,7 @@ EOT
         "alternate.127.0.0.1.xip.io:$server->{tls_port}",
         md5_file("examples/doc_root.alternate/index.txt"),
     );
+    $server->{close}();
 };
 
 

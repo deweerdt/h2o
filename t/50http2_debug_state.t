@@ -38,6 +38,7 @@ EOT
             };
         }
     });
+    $server->{close}();
 };
 
 subtest 'hpack' => sub {
@@ -64,6 +65,7 @@ EOT
         lives_ok { $data = decode_json($body) };
         ok(exists $data->{hpack});
     };
+    $server->{close}();
 };
 
 done_testing();

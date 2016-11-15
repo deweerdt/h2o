@@ -74,4 +74,5 @@ subtest 'http2' => sub {
     };
 };
 
+$server->{close}();
 done_testing();

@@ -55,6 +55,7 @@ EOT
 
     my $ct = `$CURL_CMD --header 'host: default-type-test' http://127.0.0.1:$port/`;
     is $ct, 'application/xhtml+xml', 'setdefaulttype';
+    $server->{close}();
 };
 
 subtest "issue730" => sub {
@@ -69,6 +70,7 @@ file.mime.addtypes:
 EOT
     my $ct = `$CURL_CMD http://127.0.0.1:$server->{port}/index.txt`;
     is $ct, "text/plain; charset=mycharset";
+    $server->{close}();
 };
 
 done_testing;

@@ -23,6 +23,7 @@ EOT
     my @requests = @{$jresp->{'requests'}};
     is $jresp->{'connections'}, 1, "One connection";
     is scalar @requests, 1, "One request";
+    $server->{close}();
 };
 
 subtest "json hander without requests" => sub {
@@ -41,6 +42,7 @@ EOT
     is $jresp->{'connections'}, 1, "One connection";
     is $jresp->{'requests'}, undef, "Requests not present";
     is $jresp->{'status-errors.404'}, 0, "Internal errors monitoring";
+    $server->{close}();
 };
 
 subtest "json hander check 404 error counter" => sub {
@@ -59,6 +61,7 @@ EOT
     is $jresp->{'connections'}, undef, "Connections not present";
     is $jresp->{'requests'}, undef, "Requests not present";
     is $jresp->{'status-errors.404'}, 1, "Found the 404 error";
+    $server->{close}();
 };
 
 subtest "duration stats" => sub {
@@ -80,6 +83,7 @@ EOT
     is scalar @nr_requests, 1, "One request";
     is $jresp->{'status-errors.404'}, 0, "Additional errors";
     is $jresp->{'connect-time-0'}, 0, "Duration stats";
+    $server->{close}();
 };
 
 

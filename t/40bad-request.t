@@ -25,4 +25,6 @@ like $resp, qr{^HTTP/1\.1 400 .*Content-Length:\s*11\r\n\r\nBad Request$}is, "40
 $resp = `echo "\r" | nc 127.0.0.1 $server->{port} 2>&1`;
 is $resp, "", "silent close on CRLF";
 
+$server->{close}();
+
 done_testing;

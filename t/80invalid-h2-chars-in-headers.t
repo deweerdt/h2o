@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Net::EmptyPort qw(check_port empty_port);
+use Net::EmptyPort qw(check_port);
 use Test::More;
 use t::Util;
 
@@ -40,5 +40,7 @@ like $resp, qr{.*error_code=PROTOCOL_ERROR.*}, "Protocol error for an invalid ps
 
 $resp = `nghttp -nv http://127.0.0.1:$server->{'port'}/test/ -H 'host: host.उदाहरण.com' 2>&1`;
 like $resp, qr{.*error_code=NO_ERROR.*}, "No error for utf-8 in value";
+
+$server->{close}();
 
 done_testing();

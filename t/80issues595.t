@@ -39,4 +39,6 @@ subtest "trailing HEADERS with CONTINUATION" => sub {
     $doit->("https", "", $server->{tls_port});
 };
 
+$server->{close}();
+
 done_testing;

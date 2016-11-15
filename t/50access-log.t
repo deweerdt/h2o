@@ -43,6 +43,7 @@ EOT
             if ref $expected[$i] eq 'CODE';
         like $log[$i], $expected[$i];
     }
+    $server->{close}();
 }
 
 subtest "custom-log" => sub {

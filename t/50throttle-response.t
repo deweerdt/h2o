@@ -39,4 +39,5 @@ run_with_curl($server, sub {
     };
 });
 
+$server->{close}();
 done_testing();

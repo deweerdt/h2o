@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Digest::MD5 qw(md5_hex);
 use File::Temp qw(tempdir);
-use Net::EmptyPort qw(check_port empty_port);
+use Net::EmptyPort qw(check_port);
 use Test::More;
 use t::Util;
 
@@ -40,6 +40,7 @@ hosts:
         file.dir: @{[ DOC_ROOT ]}
 EOT
     check_resp($server->{port});
+    $server->{close}();
 };
 
 subtest 'user-in-fastcgi.spawn' => sub {
@@ -57,6 +58,7 @@ hosts:
         file.dir: @{[ DOC_ROOT ]}
 EOT
     check_resp($server->{port});
+    $server->{close}();
 };
 
 subtest 'user-not-in-map-style-fastcgi.spawn' => sub {
@@ -73,6 +75,7 @@ hosts:
         file.dir: @{[ DOC_ROOT ]}
 EOT
     check_resp($server->{port});
+    $server->{close}();
 };
 
 done_testing();

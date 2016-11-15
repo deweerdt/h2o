@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use Digest::MD5 qw(md5_hex);
 use File::Temp qw(tempdir);
-use Net::EmptyPort qw(check_port empty_port);
+use Net::EmptyPort qw(check_port);
 use Test::More;
 use t::Util;
 
@@ -49,6 +49,7 @@ EOT
             unlike $resp, qr{^foo:}m;
         });
     };
+    $server->{close}();
 };
 
 subtest "mruby" => sub {
@@ -75,6 +76,7 @@ EOT
         my $resp = `$curl --silent $proto://127.0.0.1:$port/`;
         like $resp, qr{^foo:123$}m;
     });
+    $server->{close}();
 };
 
 done_testing();

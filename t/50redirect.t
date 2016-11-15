@@ -38,6 +38,7 @@ EOT
     $doit->("http://127.0.0.1:$server->{port}/abc/foo:baz", 301, "http://example.net/bar/foo:baz");
     $doit->("http://127.0.0.1:$server->{port}/foo?abc=def", 302, qr{https://example.com/foo\?abc=def});
     $doit->("http://127.0.0.1:$server->{port}/foo%0D%0Aa:1", 302, "https://example\.com/foo\%0d\%0aa:1");
+    $server->{close}();
 };
 
 subtest "trailing-slash" => sub {
@@ -87,6 +88,7 @@ EOT
             like $fetch->("/p4/abc"), qr{^location:\s*/dest/abc\r$}im;
         };
     });
+    $server->{close}();
 };
 
 done_testing;

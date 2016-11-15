@@ -21,6 +21,7 @@ EOT
         like $stderr, qr{^HTTP/[^ ]+ 301\s}s, "is 301";
         like $stderr, qr{^location: ?/abc/\r$}im, "location header";
     });
+    $server->{close}();
 };
 
 subtest 'etag' => sub {
@@ -34,7 +35,9 @@ hosts:
         file.dir: examples/doc_root
 $extra_conf
 EOT
-        return `curl --silent --dump-header /dev/stderr http://127.0.0.1:$server->{port}/ 2>&1 > /dev/null`;
+        my $ret = `curl --silent --dump-header /dev/stderr http://127.0.0.1:$server->{port}/ 2>&1 > /dev/null`;
+        $server->{close}();
+        return $ret;
     };
 
     my $etag_re = qr/^etag: /im;
@@ -71,6 +74,7 @@ EOT
         };
         $fetch->('/index.txt');
         $fetch->('/');
+        $server->{close}();
     };
 
     my $orig_len = (stat 't/assets/doc_root/index.txt')[7];
@@ -104,6 +108,7 @@ EOT
         like $resp, qr/^content-length:\s*$gz_len\r$/im, "length is as expected";
         like $resp, qr/^cache-control:.*private.*\r$/im, "cache-control: private";
         unlike $resp, qr/^vary:/im, "no vary";
+        $server->{close}();
     };
 };
 
@@ -131,6 +136,7 @@ EOT
     unlike $content, qr{examples}, "result should not include internal info";
     ($headers, $content) = $fetch->("/off/");
     like $headers, qr{^HTTP/1\.[0-9]+ 403 }s, "OFF returns 403";
+    $server->{close}();
 };
 
 done_testing();

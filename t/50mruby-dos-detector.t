@@ -38,6 +38,7 @@ EOT
             is $body, "Forbidden", "content";
         }
     };
+    $server->{close}();
 };
 
 subtest "fallthrough callback" => sub {
@@ -69,6 +70,7 @@ EOT
             is $body, "DOS_COUNT is 2, DOS_IP is 127.0.0.1", "content";
         }
     };
+    $server->{close}();
 };
 
 subtest "customized callback" => sub {
@@ -106,6 +108,7 @@ EOT
             is $body, "Service Unavailable", "content";
         }
     };
+    $server->{close}();
 };
 
 done_testing();

@@ -22,6 +22,7 @@ EOT
     is $body, "hello from h2o_mruby\n";
     like $headers, qr{^HTTP/1\.1 200 OK\r\n}s;
     like $headers, qr{^content-type: text/plain; charset=utf-8\r$}im;
+    $server->{close}();
 };
 
 subtest "basic" => sub {
@@ -105,6 +106,7 @@ EOT
         like $headers, qr{^content-type: text/plain\r$}mi;
         like $headers, qr{^hello: world\r$}mi;
     };
+    $server->{close}();
 };
 
 subtest "reprocess_request" => sub {
@@ -141,6 +143,7 @@ EOT
         ($stderr, $stdout) = run_prog("curl --data hello --silent --dump-header /dev/stderr http://127.0.0.1:$server->{port}/");
         is $stdout, "/dest/;";
     };
+    $server->{close}();
 };
 
 subtest "server-push" => sub {
@@ -163,6 +166,7 @@ hosts:
 EOT
     my $resp = `nghttp -n --stat https://127.0.0.1:$server->{tls_port}/index.txt`;
     like $resp, qr{\nid\s*responseEnd\s.*\s/index\.js\n.*\s/index\.txt}is, "receives index.js then /index.txt";
+    $server->{close}();
 };
 
 subtest "server-push / nopush" => sub {
@@ -186,6 +190,7 @@ EOT
     my $resp = `nghttp -n --stat https://127.0.0.1:$server->{tls_port}/index.txt`;
     unlike $resp, qr{/index\.js}is, "receives only /index.txt";
     like $resp, qr{/index\.txt}is, "receives only /index.txt";
+    $server->{close}();
 };
 
 subtest "infinite-reprocess" => sub {
@@ -206,6 +211,7 @@ EOT
     my ($stderr, $stdout) = run_prog("curl --silent --dump-header /dev/stderr http://127.0.0.1:$server->{port}/");
     like $stderr, qr{^HTTP\/1.1 502 }s, "502 response";
     like $stdout, qr{too many internal delegations}, "reason";
+    $server->{close}();
 };
 
 subtest "send-file" => sub {
@@ -222,6 +228,7 @@ EOT
     my ($headers, $body) = run_prog("curl --silent -A h2o_mruby_test --dump-header /dev/stderr http://127.0.0.1:$server->{port}/");
     like $headers, qr{^HTTP/1\.1 200 OK\r\n}is;
     is md5_hex($body), md5_file("t/50mruby/index.html");
+    $server->{close}();
 };
 
 subtest "exception" => sub {
@@ -252,6 +259,7 @@ EOT
         ($headers, $body) = $fetch->();
         like $headers, qr{^HTTP/1\.1 500 }is;
     }
+    $server->{close}();
 };
 
 subtest "post" => sub {
@@ -275,6 +283,7 @@ EOT
     my ($headers, $body) = run_prog("curl --silent --data 'hello' --dump-header /dev/stderr http://127.0.0.1:$server->{port}/");
     like $headers, qr{^HTTP/1\.1 200 OK\r\n}is;
     is $body, "hello\n" x 3;
+    $server->{close}();
 };
 
 subtest "InputStream#read-after-close" => sub {
@@ -307,6 +316,7 @@ EOT
     ($headers, $body) = run_prog("curl --silent --data 'hello' --dump-header /dev/stderr http://127.0.0.1:$server->{port}/");
     like $headers, qr{^HTTP/1\.1 200 OK\r\n}is;
     is $body, "got IOError";
+    $server->{close}();
 };
 
 subtest "header-concat" => sub {
@@ -327,6 +337,7 @@ EOT
         like $headers, qr{^HTTP/\S+ 200}is;
         like $body, qr{^a=b;\s*c=d$}is;
     });
+    $server->{close}();
 };
 
 subtest "close-called" => sub {
@@ -363,6 +374,7 @@ EOT
     ($headers, $body) = run_prog("curl --silent --dump-header /dev/stderr http://127.0.0.1:$server->{port}/");
     like $headers, qr{^HTTP/1\.1 200 }is;
     is $body, "hello";
+    $server->{close}();
 };
 
 subtest "close-called-on-exception" => sub {
@@ -400,6 +412,7 @@ EOT
     ($headers, $body) = run_prog("curl --silent --dump-header /dev/stderr http://127.0.0.1:$server->{port}/");
     like $headers, qr{^HTTP/1\.1 200 }is;
     is $body, "hello";
+    $server->{close}();
 };
 
 done_testing();

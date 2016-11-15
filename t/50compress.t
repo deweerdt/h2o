@@ -83,6 +83,7 @@ run_with_curl($server, sub {
     };
 });
 
+$server->{close}();
 undef $server;
 
 done_testing();

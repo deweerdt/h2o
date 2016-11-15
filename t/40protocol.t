@@ -60,4 +60,6 @@ subtest 'ab' => sub {
     ok(system("ab -f tls1 -c 10 -n 10000 -k https://127.0.0.1:$tls_port/index.txt") == 0);
 };
 
+$server->{close}();
+
 done_testing;
