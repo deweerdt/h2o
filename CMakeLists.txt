@@ -508,9 +508,21 @@ ELSE (WITH_BUNDLED_SSL)
     ENDIF (OPENSSL_FOUND)
 ENDIF (WITH_BUNDLED_SSL)
 
+include(ExternalProject)
+
+IF (WITH_MRUBY)
+    SET(H2GET_MRUBY_OPTS "-DWITH_MRUBY_LIB=${CMAKE_CURRENT_BINARY_DIR}/mruby/host/lib/libmruby.a -DWITH_MRUBY_INCLUDE=${CMAKE_CURRENT_SOURCE_DIR}/deps/mruby/include")
+ENDIF ()
+
+ExternalProject_Add(h2get
+                    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/h2get
+                    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/h2get_bin
+                    BUILD_COMMAND cmake ${H2GET_MRUBY_OPTS} ${CMAKE_CURRENT_SOURCE_DIR}/deps/h2get && make
+                    INSTALL_COMMAND true)
+
 ADD_CUSTOM_TARGET(check env H2O_ROOT=. BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR} prove -v t/*.t
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    DEPENDS h2o t-00unit-evloop.t)
+    DEPENDS h2o t-00unit-evloop.t h2get)
 IF (LIBUV_FOUND)
     ADD_DEPENDENCIES(check t-00unit-libuv.t lib-examples)
 ENDIF (LIBUV_FOUND)
