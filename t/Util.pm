@@ -12,7 +12,7 @@ use Test::More;
 use Time::HiRes qw(sleep);
 
 use base qw(Exporter);
-our @EXPORT = qw(ASSETS_DIR DOC_ROOT bindir server_features exec_unittest exec_mruby_unittest spawn_server spawn_h2o empty_ports create_data_file md5_file prog_exists run_prog openssl_can_negotiate curl_supports_http2 run_with_curl);
+our @EXPORT = qw(ASSETS_DIR DOC_ROOT bindir server_features exec_unittest exec_mruby_unittest spawn_server spawn_h2o empty_ports create_data_file md5_file prog_exists run_prog openssl_can_negotiate curl_supports_http2 run_with_curl, run_with_h2get);
 
 use constant ASSETS_DIR => 't/assets';
 use constant DOC_ROOT   => ASSETS_DIR . "/doc_root";
@@ -278,5 +278,16 @@ sub run_with_curl {
         $cb->("https", $server->{tls_port}, "curl --insecure --http2");
     };
 }
+
+sub run_with_curl {
+    my ($server, $script) = @_;
+    plan skip_all => "h2get not found"
+        unless prog_exists("./h2get");
+    my ($scriptfh, $scriptfh) = tempfile(UNLINK => 1);
+    print $scriptfh $script;
+    close($scriptfh);
+    return run_prog("./h2get $scriptfn");
+}
+
 
 1;
