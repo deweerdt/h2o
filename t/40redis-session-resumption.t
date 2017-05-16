@@ -93,6 +93,12 @@ EOT
 
 subtest 'load test' => sub {
     my $CONCURRENCY = 10;
+    if ($ENV{"H2O_VALGRIND"}) {
+        # Concurrency doesn't by us much since valgrind is single threaded
+        # in addition, '10' makes the test last 10 minutes on a reasonably
+        # fast machine
+        $CONCURRENCY = 2;
+    }
 
     my $redis = spawn_redis();
     my $server = spawn_h2o(<< "EOT");
