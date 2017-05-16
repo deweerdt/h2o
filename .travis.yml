@@ -13,7 +13,7 @@ before_install:
   - sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
   - sudo apt-add-repository --yes ppa:smspillaz/cmake-2.8.12
   - sudo apt-get --yes update
-  - sudo apt-get install --yes cmake cmake-data g++-4.8 libstdc++-4.8-dev php5-cgi wget
+  - sudo apt-get install --yes cmake cmake-data g++-4.8 libstdc++-4.8-dev php5-cgi wget libc6-dbg
   - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8"; fi
   - $CXX --version
   # for speed, pre-install deps installed in `before_script` section as ubuntu packages
@@ -41,9 +41,11 @@ before_script:
   - (cd nghttp2-1.4.0 && ./configure --prefix=/usr --disable-threads --enable-app && make && sudo make install)
   - curl -L https://curl.haxx.se/download/curl-7.50.0.tar.gz | tar xzf -
   - (cd curl-7.50.0 && ./configure --prefix=/usr --with-nghttp2 --disable-shared && make && sudo make install)
+  - curl -L http://valgrind.org/downloads/valgrind-3.12.0.tar.bz2 | tar xjf -
+  - (cd valgrind-3.12.0 && ./configure --prefix=/usr && make && sudo make install)
 
 script:
   - cmake -DWITH_MRUBY=ON .
   - make all
-  - make check
-  - sudo make check-as-root
+  - make check-valgrind
+  - sudo make check-as-root-valgrind
