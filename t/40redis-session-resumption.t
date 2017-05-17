@@ -12,6 +12,9 @@ plan skip_all => "could not find redis-server"
     unless prog_exists("redis-server");
 plan skip_all => "could not find redis-cli"
     unless prog_exists("redis-cli");
+plan skip_all => "redis tests take too long under valgrind"
+    if ENV{"H2O_VALGRIND"};
+
 
 plan skip_all => "could not find openssl"
     unless prog_exists("openssl");
