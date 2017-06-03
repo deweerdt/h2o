@@ -233,6 +233,7 @@ SET(LIB_SOURCE_FILES
 
     lib/common/cache.c
     lib/common/file.c
+    lib/common/file_observer.c
     lib/common/filecache.c
     lib/common/hostinfo.c
     lib/common/http1client.c
