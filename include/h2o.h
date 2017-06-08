@@ -542,6 +542,7 @@ struct st_h2o_context_t {
      */
     struct {
         h2o_multithread_receiver_t hostinfo_getaddr;
+        h2o_multithread_receiver_t file_observer;
     } receivers;
     /**
      * open file cache

@@ -29,29 +29,58 @@
 struct st_h2o_file_observer_t {
     const char *filename;
     time_t last_mtime;
-    pthread_mutex_t lock;
-    H2O_VECTOR(h2o_multithread_receiver_t *) receivers;
+    h2o_file_observer_receiver_t *receiver;
+};
+
+struct st_h2o_file_observer_contents_t {
+    h2o_iovec_t content;
+};
+struct st_h2o_file_observer_message_t {
+    h2o_multithread_message_t super;
+    struct st_h2o_file_observer_contents_t *contents;
+    h2o_file_observer_t *fo;
 };
 
 static H2O_VECTOR(h2o_file_observer_t *) observers;
+static H2O_VECTOR(h2o_multithread_receiver_t *) receivers;
 static pthread_mutex_t observers_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static void dispose_fo_message(void *p)
+{
+    struct st_h2o_file_observer_contents_t *contents = p;
+    free(contents->content.base);
+}
+
+static void h2o_file_observer_receiver(h2o_multithread_receiver_t *receiver, h2o_linklist_t *messages)
+{
+    while (!h2o_linklist_is_empty(messages)) {
+        struct st_h2o_file_observer_message_t *msg = H2O_STRUCT_FROM_MEMBER(struct st_h2o_file_observer_message_t, super, messages->next);
+        h2o_linklist_unlink(&msg->super.link);
+        msg->fo->receiver->cb(msg->fo->receiver, msg->contents->content);
+        h2o_mem_release_shared(msg->contents);
+        free(msg);
+    }
+}
+
 static void *file_observer_thread_main(void *_unused)
 {
     while (1) {
         struct stat st;
-        int i, ret;
+        int i, j, ret;
         H2O_VECTOR(h2o_file_observer_t *) observers_copy = {};
 
         /* copy the array so that we don't hold the lock for a long time */
         pthread_mutex_lock(&observers_lock);
         h2o_vector_reserve(NULL, &observers_copy, observers.size);
         memcpy(observers_copy.entries, observers.entries, observers.size * sizeof(*observers.entries));
+        observers_copy.size = observers.size;
         pthread_mutex_unlock(&observers_lock);
 
         for (i = 0; i < observers_copy.size; i++) {
             h2o_iovec_t new_contents;
             h2o_file_observer_t *fo = observers_copy.entries[i];
 
+            sleep(1);
             ret = stat(fo->filename, &st);
             if (ret != 0)
                 goto ReadError;
@@ -63,8 +92,21 @@ static void *file_observer_thread_main(void *_unused)
             if (!new_contents.base)
                 goto ReadError;
 
+            fo->last_mtime = st.st_mtime;
+            struct st_h2o_file_observer_contents_t *contents = h2o_mem_alloc_shared(NULL, sizeof(*contents), dispose_fo_message);
+            contents->content = new_contents;
+
+            for (j = 0; j < receivers.size; j++) {
+                struct st_h2o_file_observer_message_t *message = h2o_mem_alloc(sizeof(*message));
+                h2o_mem_addref_shared(contents);
+                message->super = (h2o_multithread_message_t){{NULL}};
+                message->contents = contents;
+                message->fo = fo;
+                h2o_multithread_send_message(receivers.entries[j], &message->super);
+            }
+            h2o_mem_release_shared(contents);
             continue;
-            fprintf(stderr, "NOTIFY\n");
+
         ReadError:
             /* on error, simply invalidate the current file */
             fo->last_mtime = 0;
@@ -90,24 +132,37 @@ static void create_file_observer_thread(void)
     }
 }
 
-h2o_file_observer_t *h2o_file_observer_create(const char *filename)
+void h2o_file_observer_context_init(h2o_context_t *ctx)
 {
-    h2o_file_observer_t *self = h2o_mem_calloc(sizeof(*self));
-    self->filename = strdup(filename);
-    pthread_mutex_init(&self->lock, NULL);
-    return self;
+    h2o_multithread_register_receiver(ctx->queue, &ctx->receivers.file_observer, h2o_file_observer_receiver);
+    h2o_vector_reserve(NULL, &receivers, receivers.size + 1);
+    receivers.entries[receivers.size++] = &ctx->receivers.file_observer;
 }
 
-void h2o_file_observer_register(h2o_file_observer_t *self, h2o_multithread_receiver_t *receiver)
+h2o_file_observer_t *h2o_file_observer_create(const char *filename, h2o_file_observer_receiver_t *receiver)
 {
+    h2o_file_observer_t *self = h2o_mem_calloc(sizeof(*self));
+    int ret;
+    struct stat st;
+
+    self->filename = strdup(filename);
+
+    ret = stat(filename, &st);
+    if (ret == 0) {
+        self->last_mtime = st.st_mtime;
+    }
+
+    pthread_mutex_lock(&observers_lock);
+    h2o_vector_reserve(NULL, &observers, observers.size + 1);
+    observers.entries[observers.size++] = self;
+    pthread_mutex_unlock(&observers_lock);
+
     static pthread_mutex_t once = PTHREAD_MUTEX_INITIALIZER;
     if (pthread_mutex_trylock(&once) == 0) {
         create_file_observer_thread();
     }
 
-    pthread_mutex_lock(&self->lock);
-    h2o_vector_reserve(NULL, &self->receivers, self->receivers.size + 1);
-    self->receivers.entries[self->receivers.size++] = receiver;
-    pthread_mutex_unlock(&self->lock);
-}
+    self->receiver = receiver;
 
+    return self;
+}

@@ -24,11 +24,17 @@
 
 #include "h2o/memory.h"
 #include "h2o/multithread.h"
+#include "h2o.h"
 
 struct st_h2o_file_observer_t;
-typedef struct st_h2o_file_observer_t h2o_file_observer_t;
+struct st_h2o_file_observer_receiver_t {
+    void (*cb)(struct st_h2o_file_observer_receiver_t *, h2o_iovec_t);
+};
 
-h2o_file_observer_t *h2o_file_observer_create(const char *filename);
-void h2o_file_observer_register(h2o_file_observer_t *self, h2o_multithread_receiver_t *receiver);
+typedef struct st_h2o_file_observer_t h2o_file_observer_t;
+typedef struct st_h2o_file_observer_receiver_t h2o_file_observer_receiver_t;
+
+void h2o_file_observer_context_init(h2o_context_t *);
+h2o_file_observer_t *h2o_file_observer_create(const char *filename, h2o_file_observer_receiver_t *receiver);
 
 #endif

@@ -94,6 +94,7 @@ void h2o_context_init(h2o_context_t *ctx, h2o_loop_t *loop, h2o_globalconf_t *co
     h2o_timeout_init(ctx->loop, &ctx->hundred_ms_timeout, 100);
     ctx->queue = h2o_multithread_create_queue(loop);
     h2o_multithread_register_receiver(ctx->queue, &ctx->receivers.hostinfo_getaddr, h2o_hostinfo_getaddr_receiver);
+    h2o_file_observer_context_init(ctx);
     ctx->filecache = h2o_filecache_create(config->filecache.capacity);
 
     h2o_timeout_init(ctx->loop, &ctx->handshake_timeout, config->handshake_timeout);
