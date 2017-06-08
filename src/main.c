@@ -61,6 +61,7 @@
 #include "neverbleed.h"
 #include "h2o.h"
 #include "h2o/configurator.h"
+#include "h2o/file_observer.h"
 #include "h2o/http1.h"
 #include "h2o/http2.h"
 #include "h2o/serverutil.h"
@@ -526,6 +527,41 @@ static void listener_setup_ssl_add_host(struct listener_ssl_config_t *ssl_config
     ssl_config->hostnames.entries[ssl_config->hostnames.size++] = h2o_iovec_init(host.base, host_end - host.base);
 }
 
+struct st_priv_key_listener_t {
+    SSL_CTX *ssl_ctx;
+    h2o_file_observer_receiver_t receiver;
+};
+
+void priv_key_change(h2o_file_observer_receiver_t *receiver, h2o_iovec_t new_contents)
+{
+    EVP_PKEY *pkey = NULL;
+	BIO *in;
+    SSL_CTX *ssl_ctx;
+    int ret;
+    struct st_priv_key_listener_t *listener = H2O_STRUCT_FROM_MEMBER(struct st_priv_key_listener_t, receiver, receiver);
+
+    ssl_ctx = listener->ssl_ctx;
+    in = BIO_new_mem_buf(new_contents.base, new_contents.len);
+    if (!in) {
+        goto Error;
+    }
+    pkey = PEM_read_bio_PrivateKey(in, NULL,
+            ssl_ctx->default_passwd_callback,
+            ssl_ctx->default_passwd_callback_userdata);
+
+	ret = SSL_CTX_use_PrivateKey(ssl_ctx, pkey);
+	EVP_PKEY_free(pkey);
+    if (ret != 1) {
+        fprintf(stderr, "failed to load private key file\n");
+        ERR_print_errors_cb(on_openssl_print_errors, stderr);
+        goto Error;
+    }
+
+Error:
+	BIO_free(in);
+    return;
+}
+
 static int listener_setup_ssl(h2o_configurator_command_t *cmd, h2o_configurator_context_t *ctx, yoml_t *listen_node,
                               yoml_t *ssl_node, struct listener_config_t *listener, int listener_is_new)
 {
@@ -713,6 +749,10 @@ static int listener_setup_ssl(h2o_configurator_command_t *cmd, h2o_configurator_
             ERR_print_errors_cb(on_openssl_print_errors, stderr);
             goto Error;
         }
+        struct st_priv_key_listener_t *listener = h2o_mem_alloc(sizeof(*listener));
+        listener->receiver.cb = priv_key_change;
+        listener->ssl_ctx = ssl_ctx;
+        h2o_file_observer_create(key_file->data.scalar, &listener->receiver);
     }
     if (cipher_suite != NULL && SSL_CTX_set_cipher_list(ssl_ctx, cipher_suite->data.scalar) != 1) {
         h2o_configurator_errprintf(cmd, cipher_suite, "failed to setup SSL cipher suite\n");
