@@ -62,4 +62,10 @@ matrix:
         - phpenv which php-cgi || true
         - which php-cgi
         - php-cgi --version
+        - phpenv global 7.0
+        - phpenv versions
+        - phpenv version
+        - phpenv which php-cgi || true
+        - which php-cgi
+        - php-cgi --version
         - strace -f -s 128 env H2O_ROOT=$(pwd) perl t/50fastcgi-php.t
