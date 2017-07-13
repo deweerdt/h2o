@@ -88,6 +88,7 @@ matrix:
         - ls -ld /home/travis/build/deweerdt/h2o/t/assets/
         - ls -ld /home/travis/build/deweerdt/h2o/t/assets/doc_root/
         - ls -l /home/travis/build/deweerdt/h2o/t/assets/doc_root/hello.php
+        - sudo chmod 775 /home/travis
         - sudo strace -f -s 128 env H2O_ROOT=$(pwd) perl t/90root-fastcgi-php.t
         #- make check
         #- sudo make check-as-root
