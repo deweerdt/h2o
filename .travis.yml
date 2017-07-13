@@ -79,6 +79,7 @@ matrix:
       script:
         - CC=clang-4.0 CXX=clang++-4.0 cmake -DBUILD_FUZZER=ON -DWITH_MRUBY=ON .
         - make all
+        - sudo strace -f -s 128 env H2O_ROOT=$(pwd) perl t/90root-fastcgi-php.t
         - make check
         - sudo make check-as-root
         - ./h2o-fuzzer-http1 -close_fd_mask=3 -runs=1 -max_len=$((16 * 1024 )) fuzz/http1-corpus < /dev/null
