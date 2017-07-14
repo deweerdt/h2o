@@ -79,19 +79,9 @@ matrix:
       script:
         - CC=clang-4.0 CXX=clang++-4.0 cmake -DBUILD_FUZZER=ON -DWITH_MRUBY=ON .
         - make all
-        - ls -ld /home
-        - ls -ld /home/travis
-        - ls -ld /home/travis/build
-        - ls -ld /home/travis/build/deweerdt
-        - ls -ld /home/travis/build/deweerdt/h2o
-        - ls -ld /home/travis/build/deweerdt/h2o/t
-        - ls -ld /home/travis/build/deweerdt/h2o/t/assets/
-        - ls -ld /home/travis/build/deweerdt/h2o/t/assets/doc_root/
-        - ls -l /home/travis/build/deweerdt/h2o/t/assets/doc_root/hello.php
         - sudo chmod 775 /home/travis
-        - sudo strace -f -s 128 env H2O_ROOT=$(pwd) perl t/90root-fastcgi-php.t
-        #- make check
-        #- sudo make check-as-root
-        #- ./h2o-fuzzer-http1 -close_fd_mask=3 -runs=1 -max_len=$((16 * 1024 )) fuzz/http1-corpus < /dev/null
-        #- ./h2o-fuzzer-http2 -close_fd_mask=3 -runs=1 -max_len=$((16 * 1024 )) fuzz/http2-corpus < /dev/null
-        #- ./h2o-fuzzer-url -close_fd_mask=3 -runs=1 -max_len=$((16 * 1024 )) fuzz/url-corpus < /dev/null
+        - make check
+        - sudo make check-as-root
+        - ./h2o-fuzzer-http1 -close_fd_mask=3 -runs=1 -max_len=$((16 * 1024 )) fuzz/http1-corpus < /dev/null
+        - ./h2o-fuzzer-http2 -close_fd_mask=3 -runs=1 -max_len=$((16 * 1024 )) fuzz/http2-corpus < /dev/null
+        - ./h2o-fuzzer-url -close_fd_mask=3 -runs=1 -max_len=$((16 * 1024 )) fuzz/url-corpus < /dev/null
