@@ -50,6 +50,7 @@ struct st_h2o_sendfile_generator_t {
     unsigned send_vary : 1;
     unsigned send_etag : 1;
     unsigned gunzip : 1;
+    unsigned all_dynamic : 1;
     char *buf;
     struct {
         size_t filesize;
@@ -567,6 +568,7 @@ static int try_dynamic_request(h2o_file_handler_t *self, h2o_req_t *req, char *r
     struct stat st;
     size_t slash_at = self->real_path.len;
 
+    fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
     while (1) {
         /* find the next slash (or return -1 if failed) */
         for (++slash_at;; ++slash_at) {
@@ -593,7 +595,7 @@ static int try_dynamic_request(h2o_file_handler_t *self, h2o_req_t *req, char *r
     case H2O_MIMEMAP_TYPE_DYNAMIC:
         return delegate_dynamic_request(req, self->conf_path.len + slash_at - self->real_path.len, rpath, slash_at, mime_type);
     }
-    fprintf(stderr, "unknown h2o_miemmap_type_t::type (%d)\n", (int)mime_type->type);
+    fprintf(stderr, "unknown h2o_mimemap_type_t::type (%d)\n", (int)mime_type->type);
     abort();
 }
 
@@ -735,6 +737,7 @@ static int on_req(h2o_handler_t *_self, h2o_req_t *req)
     struct st_h2o_sendfile_generator_t *generator = NULL;
     int is_dir;
 
+    fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
     if (req->path_normalized.len < self->conf_path.len) {
         h2o_iovec_t dest = h2o_uri_escape(&req->pool, self->conf_path.base, self->conf_path.len, "/");
         if (req->query_at != SIZE_MAX)
@@ -804,6 +807,7 @@ static int on_req(h2o_handler_t *_self, h2o_req_t *req)
     }
     /* failed to open */
 
+    fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
     if (errno == ENFILE || errno == EMFILE) {
         h2o_send_error_503(req, "Service Unavailable", "please try again later", 0);
     } else {
@@ -818,6 +822,7 @@ static int on_req(h2o_handler_t *_self, h2o_req_t *req)
     return 0;
 
 Opened:
+    fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
     return serve_with_generator(generator, req, rpath, rpath_len,
                                 h2o_mimemap_get_type_by_extension(self->mimemap, h2o_get_filext(rpath, rpath_len)));
 }

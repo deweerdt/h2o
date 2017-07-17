@@ -150,6 +150,7 @@ static void dispose_dynamic_type(h2o_mimemap_type_t *type)
 static h2o_mimemap_type_t *create_dynamic_type(h2o_globalconf_t *globalconf, h2o_mimemap_t *mimemap)
 {
     h2o_mimemap_type_t *type = h2o_mem_alloc_shared(NULL, sizeof(*type), (void (*)(void *))dispose_dynamic_type);
+fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
 
     type->type = H2O_MIMEMAP_TYPE_DYNAMIC;
     memset(&type->data.dynamic, 0, sizeof(type->data.dynamic));
@@ -338,6 +339,10 @@ h2o_mimemap_type_t *h2o_mimemap_get_type_by_extension(h2o_mimemap_t *mimemap, h2
 {
     char lcbuf[256];
 
+    if (ext.len == 0) {
+	    ext.base = "";
+	    ext.len = 1;
+    }
     if (0 < ext.len && ext.len < sizeof(lcbuf)) {
         memcpy(lcbuf, ext.base, ext.len);
         h2o_strtolower(lcbuf, ext.len);

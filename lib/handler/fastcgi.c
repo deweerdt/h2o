@@ -231,13 +231,16 @@ static void append_params(h2o_req_t *req, iovec_vector_t *vecs, h2o_fastcgi_conf
     /* SCRIPT_FILENAME, SCRIPT_NAME, PATH_INFO */
     if (req->filereq != NULL) {
         h2o_filereq_t *filereq = req->filereq;
+	fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
         append_pair(&req->pool, vecs, H2O_STRLIT("SCRIPT_FILENAME"), filereq->local_path.base, filereq->local_path.len);
         append_pair(&req->pool, vecs, H2O_STRLIT("SCRIPT_NAME"), req->path_normalized.base, filereq->url_path_len);
         if (req->path_normalized.len != filereq->url_path_len)
             path_info =
                 h2o_iovec_init(req->path_normalized.base + filereq->url_path_len, req->path_normalized.len - filereq->url_path_len);
     } else {
+	    fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
         append_pair(&req->pool, vecs, H2O_STRLIT("SCRIPT_NAME"), NULL, 0);
+	append_pair(&req->pool, vecs, H2O_STRLIT("SCRIPT_FILENAME"), NULL, 0);
         path_info = req->path_normalized;
     }
     if (path_info.base != NULL)

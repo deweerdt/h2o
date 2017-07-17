@@ -700,10 +700,15 @@ static int on_config_custom_handler(h2o_configurator_command_t *cmd, h2o_configu
         return -1;
     }
     if ((ext_node = yoml_get(node, "extension")) == NULL) {
-        h2o_configurator_errprintf(cmd, node, "mandatory key `extension` is missing");
-        return -1;
+        //h2o_configurator_errprintf(cmd, node, "mandatory key `extension` is missing");
+        //return -1;
     }
 
+    if (!ext_node) {
+	    exts = alloca(2 * sizeof(*exts));
+	    exts[0] = "";
+	    exts[1] = NULL;
+    } else {
     /* create dynamic type */
     switch (ext_node->type) {
     case YOML_TYPE_SCALAR:
@@ -727,6 +732,7 @@ static int on_config_custom_handler(h2o_configurator_command_t *cmd, h2o_configu
     default:
         h2o_configurator_errprintf(cmd, ext_node, "`extensions` must be a scalar or sequence of scalar");
         return -1;
+    }
     }
     clone_mimemap_if_clean(ctx);
     type = h2o_mimemap_define_dynamic(*ctx->mimemap, exts, ctx->globalconf);
