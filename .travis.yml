@@ -17,14 +17,15 @@ before_install:
   - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8"; fi
   - $CXX --version
   # for speed, pre-install deps installed in `before_script` section as ubuntu packages
-  - sudo apt-get install -qq cpanminus libipc-signal-perl liblist-moreutils-perl libwww-perl libio-socket-ssl-perl zlib1g-dev
+  - sudo apt-get install -qq cpanminus libipc-signal-perl liblist-moreutils-perl libwww-perl libio-socket-ssl-perl zlib1g-dev dnsutils
 
 before_script:
   # install libuv >= 1.0.0 (optionally required for building / testing libh2o)
   - curl -L https://github.com/libuv/libuv/archive/v1.0.0.tar.gz | tar xzf -
   - (cd libuv-1.0.0 && ./autogen.sh && ./configure --prefix=/usr && make && sudo make install)
   # install perl modules (mandatory for testing)
-  - misc/install-perl-module.pl Net::EmptyPort
+  - dig search.cpan.org
+  - strace -f -s 128 misc/install-perl-module.pl Net::EmptyPort
   - misc/install-perl-module.pl Scope::Guard
   - misc/install-perl-module.pl Plack
   - misc/install-perl-module.pl FCGI
