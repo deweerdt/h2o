@@ -25,7 +25,7 @@ before_script:
   - (cd libuv-1.0.0 && ./autogen.sh && ./configure --prefix=/usr && make && sudo make install)
   # install perl modules (mandatory for testing)
   - dig search.cpan.org
-  - sudo strace -e select,connect,recvfrom,sendto,read -f -s 128 misc/install-perl-module.pl Net::EmptyPort
+  - sudo strace -e select,connect,recvfrom,sendto,read -o log -f -s 128 misc/install-perl-module.pl Net::EmptyPort || cat log
   - misc/install-perl-module.pl Scope::Guard
   - misc/install-perl-module.pl Plack
   - misc/install-perl-module.pl FCGI
