@@ -25,12 +25,12 @@ before_script:
   - (cd libuv-1.0.0 && ./autogen.sh && ./configure --prefix=/usr && make && sudo make install)
   # install perl modules (mandatory for testing)
   - dig search.cpan.org
-  - sudo strace -e select,connect,recvfrom,sendto,read -o log -f -s 128 misc/install-perl-module.pl Net::EmptyPort || cat log
-  - misc/install-perl-module.pl Scope::Guard
-  - misc/install-perl-module.pl Plack
-  - misc/install-perl-module.pl FCGI
+  - misc/install-perl-module.pl Net::EmptyPort || sudo strace -e select,connect,recvfrom,sendto,read  -f -s 128 misc/install-perl-module.pl Net::EmptyPort
+  - misc/install-perl-module.pl Scope::Guard || sudo strace -e select,connect,recvfrom,sendto,read  -f -s 128 misc/install-perl-module.pl Scope::Guard
+  - misc/install-perl-module.pl Plack || sudo strace -e select,connect,recvfrom,sendto,read  -f -s 128 misc/install-perl-module.pl Plack
+  - misc/install-perl-module.pl FCGI || sudo strace -e select,connect,recvfrom,sendto,read  -f -s 128 misc/install-perl-module.pl FCGI
   - misc/install-perl-module.pl http://search.cpan.org/CPAN/authors/id/A/AR/ARODLAND/FCGI-ProcManager-0.25.tar.gz
-  - misc/install-perl-module.pl Starlet
+  - misc/install-perl-module.pl Starlet || sudo strace -e select,connect,recvfrom,sendto,read  -f -s 128 misc/install-perl-module.pl Starlet
   - misc/install-perl-module.pl JSON
   - misc/install-perl-module.pl Path::Tiny
   - misc/install-perl-module.pl Test::Exception
