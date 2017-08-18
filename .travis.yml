@@ -21,10 +21,10 @@ before_install:
 
 before_script:
   - dig search.cpan.org
-  - misc/install-perl-module.pl Net::EmptyPort || sudo strace -e select,connect,recvfrom,sendto,read  -f -s 128 misc/install-perl-module.pl Net::EmptyPort
-  - misc/install-perl-module.pl Scope::Guard || sudo strace -e select,connect,recvfrom,sendto,read  -f -s 128 misc/install-perl-module.pl Scope::Guard
-  - misc/install-perl-module.pl Plack || sudo strace -e select,connect,recvfrom,sendto,read  -f -s 128 misc/install-perl-module.pl Plack
-  - misc/install-perl-module.pl FCGI || sudo strace -e select,connect,recvfrom,sendto,read  -f -s 128 misc/install-perl-module.pl FCGI
+  - misc/install-perl-module.pl Net::EmptyPort || sudo strace -tt -e select,connect,recvfrom,sendto,read  -f -s 128 misc/install-perl-module.pl Net::EmptyPort
+  - misc/install-perl-module.pl Scope::Guard || sudo strace -tt -e select,connect,recvfrom,sendto,read  -f -s 128 misc/install-perl-module.pl Scope::Guard
+  - misc/install-perl-module.pl Plack || sudo strace -tt -e select,connect,recvfrom,sendto,read  -f -s 128 misc/install-perl-module.pl Plack
+  - misc/install-perl-module.pl FCGI || sudo strace -tt -e select,connect,recvfrom,sendto,read  -f -s 128 misc/install-perl-module.pl FCGI
   - misc/install-perl-module.pl http://search.cpan.org/CPAN/authors/id/A/AR/ARODLAND/FCGI-ProcManager-0.25.tar.gz
   - misc/install-perl-module.pl Starlet || sudo strace -e select,connect,recvfrom,sendto,read  -f -s 128 misc/install-perl-module.pl Starlet
   - misc/install-perl-module.pl JSON
