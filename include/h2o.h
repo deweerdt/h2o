@@ -636,6 +636,10 @@ struct st_h2o_context_t {
              */
             uint64_t write_closed;
         } events;
+        struct {
+            uint64_t pushes;
+            uint64_t hpack_evictions;
+        } stats;
     } http2;
 
     struct {

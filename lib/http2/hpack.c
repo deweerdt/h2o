@@ -265,13 +265,19 @@ static void header_table_evict_one(h2o_hpack_header_table_t *table)
 }
 
 static struct st_h2o_hpack_header_table_entry_t *header_table_add(h2o_hpack_header_table_t *table, size_t size_add,
-                                                                  size_t max_num_entries)
+                                                                  size_t max_num_entries, uint64_t *evictions)
 {
     /* adjust the size */
-    while (table->num_entries != 0 && table->hpack_size + size_add > table->hpack_capacity)
+    while (table->num_entries != 0 && table->hpack_size + size_add > table->hpack_capacity) {
+        if (evictions)
+            *evictions++;
         header_table_evict_one(table);
-    while (max_num_entries <= table->num_entries)
+    }
+    while (max_num_entries <= table->num_entries) {
+        if (evictions)
+            *evictions++;
         header_table_evict_one(table);
+    }
     if (table->num_entries == 0) {
         assert(table->hpack_size == 0);
         if (size_add > table->hpack_capacity)
@@ -308,7 +314,7 @@ static struct st_h2o_hpack_header_table_entry_t *header_table_add(h2o_hpack_head
 
 static int decode_header(h2o_mem_pool_t *pool, struct st_h2o_decode_header_result_t *result,
                          h2o_hpack_header_table_t *hpack_header_table, const uint8_t **const src, const uint8_t *src_end,
-                         const char **err_desc)
+                         const char **err_desc, uint64_t *evictions)
 {
     int32_t index = 0;
     int value_is_indexed = 0, do_index = 0;
@@ -350,6 +356,8 @@ Redo:
         hpack_header_table->hpack_capacity = new_apacity;
         while (hpack_header_table->num_entries != 0 && hpack_header_table->hpack_size > hpack_header_table->hpack_capacity) {
             header_table_evict_one(hpack_header_table);
+            if (evictions)
+                *evictions++;
         }
         goto Redo;
     }
@@ -403,7 +411,7 @@ Redo:
     /* add the decoded header to the header table if necessary */
     if (do_index) {
         struct st_h2o_hpack_header_table_entry_t *entry =
-            header_table_add(hpack_header_table, result->name->len + result->value->len + HEADER_TABLE_ENTRY_SIZE_OFFSET, SIZE_MAX);
+            header_table_add(hpack_header_table, result->name->len + result->value->len + HEADER_TABLE_ENTRY_SIZE_OFFSET, SIZE_MAX, evictions);
         if (entry != NULL) {
             entry->err_desc = *err_desc;
             entry->name = result->name;
@@ -485,7 +493,7 @@ void h2o_hpack_dispose_header_table(h2o_hpack_header_table_t *header_table)
 
 int h2o_hpack_parse_headers(h2o_req_t *req, h2o_hpack_header_table_t *header_table, const uint8_t *src, size_t len,
                             int *pseudo_header_exists_map, size_t *content_length, h2o_cache_digests_t **digests,
-                            const char **err_desc)
+                            const char **err_desc, uint64_t *evictions)
 {
     const uint8_t *src_end = src + len;
 
@@ -494,7 +502,7 @@ int h2o_hpack_parse_headers(h2o_req_t *req, h2o_hpack_header_table_t *header_tab
     while (src != src_end) {
         struct st_h2o_decode_header_result_t r;
         const char *decode_err = NULL;
-        int ret = decode_header(&req->pool, &r, header_table, &src, src_end, &decode_err);
+        int ret = decode_header(&req->pool, &r, header_table, &src, src_end, &decode_err, evictions);
         if (ret != 0) {
             if (ret == H2O_HTTP2_ERROR_INVALID_HEADER_CHAR) {
                 /* this is a soft error, we continue parsing, but register only the first error */
@@ -730,7 +738,7 @@ static uint8_t *encode_header(h2o_hpack_header_table_t *header_table, uint8_t *d
            not take too long) */
         dst += h2o_hpack_encode_string(dst, value->base, value->len);
         struct st_h2o_hpack_header_table_entry_t *entry =
-            header_table_add(header_table, name->len + value->len + HEADER_TABLE_ENTRY_SIZE_OFFSET, 32);
+            header_table_add(header_table, name->len + value->len + HEADER_TABLE_ENTRY_SIZE_OFFSET, 32, NULL);
         if (entry != NULL) {
             if (name_is_token) {
                 entry->name = (h2o_iovec_t *)name;
