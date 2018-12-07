@@ -69,6 +69,7 @@ static void save_old_stream(h2o_http2_conn_t *conn, h2o_http2_stream_t *stream)
 {
     size_t slot = conn->recently_closed_streams.next_slot;
     if (conn->recently_closed_streams.streams[slot].stream_id != 0) {
+        assert(h2o_http2_scheduler_is_open(&conn->recently_closed_streams.streams[slot].sched_node));
         h2o_http2_scheduler_close(&conn->recently_closed_streams.streams[slot].sched_node);
     }
     assert(h2o_http2_scheduler_is_open(&stream->_refs.scheduler));
