@@ -255,10 +255,6 @@ void h2o_http2_conn_unregister_stream(h2o_http2_conn_t *conn, h2o_http2_stream_t
     assert(iter != kh_end(conn->streams));
     kh_del(h2o_http2_stream_t, conn->streams, iter);
 
-    assert(h2o_http2_scheduler_is_open(&stream->_refs.scheduler));
-    h2o_http2_scheduler_close(&stream->_refs.scheduler);
-
-
     if (stream->_conn_stream_in_progress) {
         h2o_http2_conn_t *conn = (h2o_http2_conn_t *)stream->req.conn;
         stream->_conn_stream_in_progress = 0;
