@@ -274,8 +274,10 @@ void h2o_http2_scheduler_relocate(h2o_http2_scheduler_openref_t *dst, h2o_http2_
     h2o_linklist_unlink(&src->_all_link);
 
     /* swap _queue_node._link */
-    h2o_linklist_insert(&src->_queue_node._link, &dst->_queue_node._link);
-    h2o_linklist_unlink(&src->_queue_node._link);
+    if (h2o_linklist_is_linked(&src->_queue_node._link)) {
+        h2o_linklist_insert(&src->_queue_node._link, &dst->_queue_node._link);
+        h2o_linklist_unlink(&src->_queue_node._link);
+    }
 }
 
 static void do_rebind(h2o_http2_scheduler_openref_t *ref, h2o_http2_scheduler_node_t *new_parent, int exclusive)
