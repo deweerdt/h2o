@@ -67,15 +67,12 @@ h2o_http2_stream_t *h2o_http2_stream_open(h2o_http2_conn_t *conn, uint32_t strea
 
 static void save_old_stream(h2o_http2_conn_t *conn, h2o_http2_stream_t *stream)
 {
-    size_t idx = conn->recently_closed_streams.idx;
-    if (conn->recently_closed_streams.streams[idx].sched_node) {
-        h2o_http2_stream_t *old_stream = H2O_STRUCT_FROM_MEMBER(h2o_http2_stream_t, _refs.scheduler, conn->recently_closed_streams.streams[idx].sched_node);
-        h2o_http2_scheduler_close(conn->recently_closed_streams.streams[idx].sched_node);
-        free(old_stream);
-    }
-    conn->recently_closed_streams.streams[idx].stream_id = stream->stream_id;
-    conn->recently_closed_streams.streams[idx].sched_node = &stream->_refs.scheduler;
-    conn->recently_closed_streams.idx = (idx + 1) % HTTP2_OLD_PRIORITIES;
+    size_t slot = conn->recently_closed_streams.next_slot;
+    if (conn->recently_closed_streams.streams[slot].stream_id != 0)
+        h2o_http2_scheduler_close(&conn->recently_closed_streams.streams[slot].sched_node);
+    h2o_http2_scheduler_relocate(&conn->recently_closed_streams.streams[slot].sched_node, &stream->_refs.scheduler);
+    conn->recently_closed_streams.streams[slot].stream_id = stream->stream_id;
+    conn->recently_closed_streams.next_slot = (slot + 1) % HTTP2_CLOSED_STREAM_PRIORITIES;
 }
 
 void h2o_http2_stream_close(h2o_http2_conn_t *conn, h2o_http2_stream_t *stream)
@@ -90,6 +87,7 @@ void h2o_http2_stream_close(h2o_http2_conn_t *conn, h2o_http2_stream_t *stream)
     h2o_dispose_request(&stream->req);
     if (stream->stream_id == 1 && conn->_http1_req_input != NULL)
         h2o_buffer_dispose(&conn->_http1_req_input);
+    free(stream);
 }
 
 void h2o_http2_stream_reset(h2o_http2_conn_t *conn, h2o_http2_stream_t *stream)
