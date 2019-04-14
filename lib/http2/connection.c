@@ -955,14 +955,17 @@ static int handle_goaway_frame(h2o_http2_conn_t *conn, h2o_http2_frame_t *frame,
 static int handle_ping_frame(h2o_http2_conn_t *conn, h2o_http2_frame_t *frame, const char **err_desc)
 {
     h2o_http2_ping_payload_t payload;
+    uint64_t *pl;
     int ret;
 
     if ((ret = h2o_http2_decode_ping_payload(&payload, frame, err_desc)) != 0)
         return ret;
 
+    pl = (void *)payload.data;
     if ((frame->flags & H2O_HTTP2_FRAME_FLAG_ACK) == 0) {
         h2o_http2_encode_ping_frame(&conn->_write.buf, 1, payload.data);
         h2o_http2_conn_request_write(conn);
+    } else {
     }
 
     return 0;

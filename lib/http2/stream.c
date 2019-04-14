@@ -113,6 +113,13 @@ static size_t calc_max_payload_size(h2o_http2_conn_t *conn, h2o_http2_stream_t *
     return sz_min(sz_min(conn_max, stream_max), conn->peer_settings.max_frame_size);
 }
 
+static void emit_eor_ping(h2o_http2_conn_t *conn, h2o_http2_stream_t *stream)
+{
+    uint64_t payload = stream->stream_id;
+    fprintf(stderr, "%s:%d\n", __func__, __LINE__);
+    h2o_http2_encode_ping_frame(&conn->_write.buf, 0, (void *)&payload);
+}
+
 static void commit_data_header(h2o_http2_conn_t *conn, h2o_http2_stream_t *stream, h2o_buffer_t **outbuf, size_t length,
                                h2o_send_state_t send_state)
 {
@@ -127,6 +134,9 @@ static void commit_data_header(h2o_http2_conn_t *conn, h2o_http2_stream_t *strea
         h2o_http2_window_consume_window(&stream->output_window, length);
         (*outbuf)->size += length + H2O_HTTP2_FRAME_HEADER_SIZE;
         stream->req.bytes_sent += length;
+    }
+    if (send_state == H2O_SEND_STATE_FINAL) {
+        emit_eor_ping(conn, stream);
     }
     /* send a RST_STREAM if there's an error */
     if (send_state == H2O_SEND_STATE_ERROR) {
