@@ -85,7 +85,13 @@ static h2o_http3client_ctx_t *create_http3_context(h2o_context_t *ctx, int use_g
     h3ctx->quic.transport_params.max_streams_uni = 10;
     uint8_t cid_key[PTLS_SHA256_DIGEST_SIZE];
     ptls_openssl_random_bytes(cid_key, sizeof(cid_key));
-    h3ctx->quic.cid_encryptor = quicly_new_default_cid_encryptor(&ptls_openssl_bfecb, &ptls_openssl_aes128ecb, &ptls_openssl_sha256,
+    h3ctx->quic.cid_encryptor = quicly_new_default_cid_encryptor(
+#ifdef PTLS_OPENSSL_HAVE_BF
+            &ptls_openssl_bfecb,
+#else
+            &ptls_openssl_aes128ecb,
+#endif
+            &ptls_openssl_aes128ecb, &ptls_openssl_sha256,
                                                                  ptls_iovec_init(cid_key, sizeof(cid_key)));
     ptls_clear_memory(cid_key, sizeof(cid_key));
     h3ctx->quic.stream_open = &h2o_httpclient_http3_on_stream_open;

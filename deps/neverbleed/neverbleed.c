@@ -49,7 +49,8 @@
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x1010000fL && !defined(OPENSSL_NO_EC) \
-    && (!defined(LIBRESSL_VERSION_NUMBER) || LIBRESSL_VERSION_NUMBER >= 0x2090100fL)
+    && (!defined(LIBRESSL_VERSION_NUMBER) || LIBRESSL_VERSION_NUMBER >= 0x2090100fL) \
+    && !defined(OPENSSL_IS_BORINGSSL)
 /* EC_KEY_METHOD and related APIs are avaliable, so ECDSA is enabled. */
 #define NEVERBLEED_ECDSA
 #endif
@@ -610,7 +611,7 @@ static int priv_enc_proxy(int flen, const unsigned char *from, unsigned char *to
 
 static int priv_enc_stub(struct expbuf_t *buf)
 {
-    return priv_encdec_stub(__FUNCTION__, RSA_private_encrypt, buf);
+    return priv_encdec_stub(__FUNCTION__, (void *)RSA_private_encrypt, buf);
 }
 
 static int priv_dec_proxy(int flen, const unsigned char *from, unsigned char *to, RSA *rsa, int padding)
@@ -620,7 +621,7 @@ static int priv_dec_proxy(int flen, const unsigned char *from, unsigned char *to
 
 static int priv_dec_stub(struct expbuf_t *buf)
 {
-    return priv_encdec_stub(__FUNCTION__, RSA_private_decrypt, buf);
+    return priv_encdec_stub(__FUNCTION__, (void *)RSA_private_decrypt, buf);
 }
 
 static int sign_proxy(int type, const unsigned char *m, unsigned int m_len, unsigned char *_sigret, unsigned *_siglen,
@@ -709,7 +710,9 @@ static EVP_PKEY *create_pkey(neverbleed_t *nb, size_t key_index, const char *ebu
         abort();
     }
     RSA_set0_key(rsa, n, e, NULL);
+#ifndef OPENSSL_IS_BORINGSSL
     RSA_set_flags(rsa, RSA_FLAG_EXT_PKEY);
+#endif
 
     pkey = EVP_PKEY_new();
     EVP_PKEY_set1_RSA(pkey, rsa);
@@ -1458,7 +1461,11 @@ int neverbleed_init(neverbleed_t *nb, char *errbuf)
 #endif
 
 #ifdef NEVERBLEED_OPAQUE_RSA_METHOD
+#ifndef OPENSSL_IS_BORINGSSL
     rsa_default_method = RSA_PKCS1_OpenSSL();
+#else
+    rsa_default_method  = RSA_get_default_method();
+#endif
     rsa_method = RSA_meth_dup(rsa_default_method);
 
     RSA_meth_set1_name(rsa_method, "privsep RSA method");
