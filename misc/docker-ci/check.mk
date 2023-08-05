@@ -85,7 +85,7 @@ _check: _mount _do_check
 
 _mount:
 	uname -a
-	sudo apt-get install -y strace
+	sudo apt-get install -y strace gdb
 	sudo mount -t tmpfs tmpfs -o size=$(TMP_SIZE) /tmp
 	sudo mkdir -p /sys/fs/bpf
 	sudo mount -t bpf bpf -o mode=700 /sys/fs/bpf
