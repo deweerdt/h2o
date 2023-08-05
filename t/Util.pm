@@ -783,7 +783,7 @@ EOC
         my ($scriptfh, $scriptfn) = tempfile(UNLINK => 1);
         print $scriptfh $code;
         close($scriptfh);
-        exec(qw(strace -f -e write ), bindir() . '/h2get_bin/h2get', $scriptfn, "127.0.0.1:$backend_port");
+        exec(qw(gdb -ex run --args), bindir() . '/h2get_bin/h2get', $scriptfn, "127.0.0.1:$backend_port");
     }, +{ on_exit => sub {
         my ($out, $err) = @_;
         $testfn->($err, $out);
