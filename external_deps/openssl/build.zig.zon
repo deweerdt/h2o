@@ -1,0 +1,14 @@
+.{
+    .name = "openssl",
+    .version = "3.0.13-1",
+    .dependencies = .{
+        .zlib = .{
+            .url = "https://www.openssl.org/source/openssl-3.0.13.tar.gz",
+        },
+    },
+    .paths = .{
+        "LICENSE",
+        "build.zig",
+        "build.zig.zon",
+    },
+}

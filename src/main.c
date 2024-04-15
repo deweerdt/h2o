@@ -3882,6 +3882,7 @@ static void on_accept(h2o_socket_t *listener, const char *err)
             num_connections(-1);
             break;
         }
+        h2o_socket_t *h2o_evloop_socket_accept(h2o_socket_t *listener);
         if ((sock = h2o_evloop_socket_accept(listener)) == NULL) {
             num_connections(-1);
             break;

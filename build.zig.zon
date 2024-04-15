@@ -1,0 +1,37 @@
+.{
+    .name = "h2o",
+    .version = "2.3.0-1",
+    .dependencies = .{
+        .libz = .{
+            .path = "external_deps/zlib",
+        },
+        .openssl = .{
+            .path = "external_deps/openssl",
+        },
+    },
+    .paths = .{
+        "CONTRIBUTING.md",
+        "Changes",
+        "LICENSE",
+        "README.md",
+        "SECURITY.md",
+        "build.zig",
+        "build.zig.zon",
+        "cmake",
+        "deps",
+        "doc",
+        "examples",
+        "fuzz",
+        "h2o-probes.d",
+        "h2o.xcodeproj",
+        "include",
+        "lib",
+        "libh2o-evloop.pc.in",
+        "libh2o.pc.in",
+        "misc",
+        "share",
+        "src",
+        "srcdoc",
+        "t",
+    },
+}
